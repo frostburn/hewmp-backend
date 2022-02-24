@@ -1,12 +1,21 @@
+{% load static %}
 <!DOCTYPE html>
 <html>
-<head><title>Text2Music (Beta) | lumipakkanen.com</title></head>
-<body>
+<head>
+    <title>Text2Music (Beta) | lumipakkanen.com</title>
+    <script type="text/javascript">window.noiseModuleURL = "{% static 'text2music/js/noise.js' %}";</script>
+    <script type="text/javascript" src="{% static 'text2music/js/util.js' %}"></script>
+    <script type="text/javascript" src="{% static 'text2music/js/percussion.js' %}"></script>
+    <script type="text/javascript" src="{% static 'text2music/js/main.js' %}"></script>
+</head>
+<body onload="main()">
 <h2>Text2Music (Beta)</h2>
 <form method="POST" target="_blank">
     {% csrf_token %}
     <textarea id="score" name="score" rows="40" cols="120"></textarea>
     <br><br>
+    <input type="button" value="play" id="play">
+    <input type="button" value="stop" id="stop">
     <input name="type" value="midi" type="submit">
     <input name="type" value="fractions" type="submit">
 </form>
