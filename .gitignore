@@ -1,3 +1,6 @@
+# Server side secrets
+hewmp_backend/hewmp_backend/settings.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

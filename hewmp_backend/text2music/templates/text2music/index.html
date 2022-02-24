@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head><title>Text2Music (Beta) | lumipakkanen.com</title></head>
+<body>
+<h2>Text2Music (Beta)</h2>
+<form method="POST" target="_blank">
+    {% csrf_token %}
+    <textarea id="score" name="score" rows="40" cols="120"></textarea>
+    <br><br>
+    <input name="type" value="midi" type="submit">
+    <input name="type" value="fractions" type="submit">
+</form>
+<br>
+<a href="https://github.com/frostburn/hewmp">Documentation</a>
+<h4>Examples</h4>
+<button id="minuet">Minuet</button><br>
+<button id="withoutYou">Without You</button><br>
+<button id="giantSteps">Giant Steps</button><br>
+<button id="smithereens">Smithereens</button><br>
+<button id="diaschismic">a comma pump</button><br>
+<br>
+<a href="https://github.com/frostburn/hewmp/issues">Report bugs</a>
+<footer>
+    <p>Thank You <a href="https://www.patreon.com/frostburn">Patron(s)</a>: Stephen Weigel</p>
+</footer>
+
+<script type="text/javascript">
+    const minuetButton = document.getElementById("minuet");
+    const withoutYouButton = document.getElementById("withoutYou");
+    const giantStepsButton = document.getElementById("giantSteps");
+    const smithereensButton = document.getElementById("smithereens");
+    const diaschismicButton = document.getElementById("diaschismic");
+    const scoreArea = document.getElementById("score");
+    minuetButton.onclick = e => {
+        scoreArea.value = "$ Minuet\n$ from Notebook for Anna Magdalena Bach\n$ by Christian Petzold\nQ:1/4=120  $ Allegretto\nET:12  $ Twelve-tone equal temperament\nL:1/4\n\nG4[0]  $ G major\n\n|: p\n T _   P5          (P1 M2) (M3 P4) | ' P5 P1 P1 | _ M6 (P4 P5) (M6 M7) | ' P8 P1 P1 |\n@T _ (`P1,`M3,`P5)  !      `M2     |  `M3 !  !  |  `P4!       !      |  `M3 !  !  |\n\n T _  P4 (P5 P4) (M3 M2) |  M3 (P4 M3) (M2 P1) | `M7 (P1 M2) (M3 P1) | (M3 M2!!!!!!!!!!!!!)[3]|\n@T _ `M2  !       !      | `P1  !       !      | `P5 `M3     `P1     | `P5 (``P5 `P4) (`M3 `M2)|\n\n T _  P5 (P1 M2) (M3 P4) | ' P5    P1  P1 | _  M6 (P4 P5) (M6 M7) | ' P8   P1        P1      |\n@T _ `M3  !      `M2     |  `P1 ' `M3 `P1 | _ `P4  !       !      |  `M3 (`P4 `M3) (`M2 `P1) |\n\n T _  P4 (P5 P4) (M3 M2) |  M3 (P4 M3) (M2 P1) |  M2 (M3 M2) (P1 `M7) |  P1 !   !\n@T _ `M2  !     ``M7     | `P1  !      `M3     | `P4 `P5    ``P5      | `P1 ! ``P1\n:|\n\n|:\n T _ mf cM3 (cP1 cM2) (cM3 cP1) |  cM2 (P5 M6) (M7 P5) |   P8 (M6 M7) (P8 P5) |  a4 (M3 a4) M2 |\n@T _ mf `P1  !         !        | ``M7  !       !      | ``M6 `P1    ``M6     | `M2  !    ``M2 |\n\n T _ mf (M2 M3) f (a4 P5) f (M6 M7) | '  P8  M7  M6 |  M7 f   M2 mf  a4 | _ mp  P5   !   !  |\n@T _ mf `M2     f  !      f  !      | ' `M3 `P5 `a4 | `P5 f ``M7 mf `M2 | _ mp `P5 ``P5 `P4 |\n\n T _ p  P5   (P1 `M7) P1 |  M6   (P1 `M7) P1 |  P5  P4  M3 | (M2 P1) (`M7 P1) M2 |\n@T _ p `M3 ~ `P5 ~   `M3 | `P4 ~ `M6 ~   `P4 | `M3 `M2 `P1 | `P5       !      .  |\n\n T _ p (`P5 `M6) mp (`M7 P1) mf  (M2 M3) | '   P4  M3   M2 | _ (M3 P5) ' mp   P1 p  `M7 | _ (P1,`P5,`M3) !    !\n@T _ p ``P5  !~              mf ``M7     | ' ``M6 `P1 ``M7 | _ `P1 ' mp ``M3 p ``P5 |   `P1        ``P5 ``P1\n :|\n";
+    };
+    withoutYouButton.onclick = e => {
+        scoreArea.value = "$ Without You\n$ by: Kite Giedraitis\nQ:1/4=130  $ molto allegro\nG:1/4=2 3  $ quintuplet swing (inverted to account for pick-up)\n---\nL:1/8\nI:Acoustic Grand Piano\nMP:14\n\nff\n\n.  $ Leave room for pick-up\n\n$ Section A: Treble voices\n|:\n.   .  (yG3,Bb3,F4  )! %!! %|!! %! zDb4 C4   Bb3  ! |\n.   .  (yG3,Bb3,ryE4)! %!! %|!! %! zDb4 C4   Bb3  ! |\n.   .  (yA3,C4 ,zEb4)! %!! %|!! %! zDb4 !    C4   ! |\nBb3 !  (F3 ,Bb3,yD4 )! %!! %|!! %! zAb3 zAb3 zAb3 !\n:|\n\n$ Section A: Bass voices\n@T .   |: yD3 !!!!! !   ! | ! yD3 !!!!! .  |yD3 !!!!! !   ! | ! yD3 !!!!! .  | C3 !!!!! !  ! | ! C3 !!!!!! | Bb2 !!!!! !  ! | ! Bb2 !!!!! .   :|\n@T yG2 |: !   !!!!! yG2 ! | ! !   !!!!! yG2|!   !!!!! yG2 ! | ! !   !!!!! F2 | !  !!!!! F2 ! | ! !  !!!!!! | F2  !!!!! F2 ! | ! !   !!!!! yG2 :|\n\n\n\nT  $ Section B: Treble voices\nyG3 ! (yG3,Bb3,zDb4)! %!! %         |! %         !. Eb4 zDb4 Bb3 ! |\nAb3 ! (Ab3,yC4     )! %!! (zGb3,Cb4)|! (Ab3,yC4) !. Eb4 zDb4 Bb3 ! |\nyG3 ! (yG3,Bb3,zDb4)! %!! %         |! %         !. Eb4 zDb4 Bb3 ! |\n\nyA3 ! (yA3,C4,zEb4)! %!! %|!! %! % ! (zAb3,ryB3,yD4)! | (yG3,Bb3,zDb4)!!! !!! !|!!!!!!!!|\n.   . (F3,Bb3,yD4 )! %!! %|!! %! ! % !              ! | (F3 ,Bb3,yD4 )!!! %!! %|!!!!!!!!||\n\n\n@T  $ Section B: Bass voices\n(Eb2,Bb2)!!!!! %!|!!! (zGb2,zDb3)!!!!|(Ab2,Eb3)!!!!! %!|!!! (zGb2,zDb3)!!!!|(Eb2,Bb2)!!!!! %!|!!! (zGb2,zDb3)!!!!|\n\n T C3 !!!!! !  !|! C3 !! ....|.   . Bb2 !~~~ ryE3   !    ! Bb2      |!!!!!!! . |Bb2 !!!!! !  !|! Bb2 !! !  ! Bb2 !|!! !  !! Bb2 !!|!!!!!!!!||\n@T F2 !!!!! F2 !|! !  !! ....|yG2 ! !   !    !~~    zDb3 ! (Eb2,Eb3)|!!!!!!! F2|!   !!!!! F2 !|! !   !! F2 ! !   !|!! F2 !! !   !!|!!!!!!!!||\n\n---\nI:Acoustic Bass\nL:1/4\nMP:1\n\n.[1/2]  $ Leave room for pick-up\n\n$ Section A first repeat\nyG1   F2 yD2  Bb1 | yG1   F2     Bb1  (C2 yD2) |\nyG1 ryE2 yD2  Bb1 | yG1 ryE2     Bb1  (C2 yD2) |\n F1 zEb2  C2  yA1 |  F1 zEb2      F2  (C2 yD2) |\nBb1   F2  F1 zAb1 | Bb1 (yD2 C2) Bb1 zAb1      |\n$ Section A second repeat\nyG1   F2 yD2  Bb1 | yG1   F2  Bb1 (C2 yD2) |\nyG1 ryE2 yD2  Bb1 | yG1 ryE2  Bb1 (C2 yD2) |\n F1 zEb2  C2  yA1 |  F1 zEb2   F2 (C2 yD2) |\nBb1  Bb2 zAb2  F2 | yD2  Bb1 zAb1  F1      |\n\n$ Section B\nEb1  Bb1 zDb2   Bb1               |  Eb1  Bb1 zGb1 zDb2      |\nAb1  Eb2 zGb2   Eb2               |  Ab1  Eb2 zGb1 zDb2      |\nEb1  Bb1 zDb2   Bb1               |  Eb2  Bb1 zGb1 zDb2      |\n F1 zEb2   C2   yA1               |   F1 zEb2   C2  yA1      |\nyG1  yG2  Bb1  zDb2[1/2] Eb2[1/2] |    !    !    !    !      |\nBb1  Bb2 zAb2    F2               | zAb2   F2  yD2   F2      |\nyD2   C2  yD2    C2               |  Bb1    !    !    !      ||\n\n---\nN:percussion\nL:1/8\n\n.  $ Leave room for pick-up\n\n$ Section A first repeat\n|: k,h .   h . st,h .  h,k k  :|x7\n|  k,h .   h . t4   t3 t2  t1  |\n$ Section A second repeat\n|: k,h .   h . st,h .  h,k k  :|x7\n|  k,h .   h . t4   t3 t2  t1  |\n$ Section B\n|: k,r .   . k k,r  .  t3  t3 :|x8\n.[8] | c[8]\n|: k,h .   h . st,h .  h,k k  :|x3\nh[8] ||\n";
+    };
+    giantStepsButton.onclick = e => {
+        scoreArea.value = "$ Giant Steps by John Coltrane\nBF:432\nQ:1/4=250\nG:1/4=2 1  $ triplet swing\n---\n$ Chord Progression\nL:1/2\nV:0.8\nI:Electric Piano 1\nMP:4\n@-m10+[0]\n|: ~P4=M- ~m3+=dom- | ~-P5=M-     ~m3+=dom-_2 | ~P4=M-_1[2] | ~a4-=m7+_1 ~-P5=7-_2 |\n  ~-P5=M- ~m3+=dom- | ~-P5=M-     ~m3+=dom-_2 | ~P4=M-  [2] | ~a4-=m7+_1 ~-P5=7-_2 |\n  ~-P5=M-[2]        | ~a4-=m7+    ~-P5=dom-   | ~P4=M-  [2] | ~a4-=m7+   ~-P5=7-   |\n  ~-P5=M-[2]        | ~a4-=m7+    ~-P5=dom-   | ~P4=M-  [2] | ~m7+=m7+   ~-P5=7-  :|x2\n---\n$ Melody\nL:1/8\nI:Alto Sax\nMP:1\n@M6-[0]\n|: ~P1[4] ~-M3-[4] | ~-m3+[4]  ~-M3-[3] ~m3+|[!8] | ~+a1-[3]  ~-M2[5]     |\n   ~P4[4] ~-M3-[4] | ~-m3+[4]  ~-M3-[3] ~m3+|[!8] | ~+a1-[4]   ~-M2[3] ~P4|\n  [!8]             | ~+a1-[4]  ~-M2 [3] ~P4 |[!8] | ~+a1-[4]   ~-M2[3] ~P4|\n  [!4]      ~P1[4] | ~+a1-[4]  ~-M2 [3] ~P4 |[!8] | ~-M3-[3] ~P1[5]      :|x2\n---\n$ Bass\nL:1/4\nV:0.7\nI:Acoustic Bass\nMP:1\n@-cm10+[0]\n|: ~P4[2]   ~m3+&-P4[2] | ~-P5[2]   ~+m3+&-P4[2] | ~P4 -P4  -m6+ -P8  | ~a4-&-P8 -P4 ~-P5&M3- P5   |\n  ~-P5[2]   ~m3+&-P4[2] | ~-P5[2]   ~+m3+&-P4[2] | ~P4 -P4  +M3- +P5  | ~a4-&-P8 -P4 ~-P5&M3- P5   |\n  ~-P5 M3-   P5  P8     | ~+a4- m3+ ~-P5    M3-  | ~P4 -P4  +M3- +P5  | ~a4-     -P4 ~-P5     M3-  |\n  ~-P5 M3-   P5  P8     | ~+a4- m3+ ~-P5    M3-  | ~P4 +M3- +P5  +P8  | ~m7+     -P4 ~-P5     M3- :|x2\n---\n$ Percussion\nL:1/4\nV:0.7\nN:percussion\nMP:1\n|: k,r (r r) s,r (r r) :|x32\n";
+    };
+    smithereensButton.onclick = e => {
+        scoreArea.value = "$ Smithereens\n$ by Lumi Pakkanen\nT:orgone\nQ:1/4=130\nG:3/8=2 3 3\n---\nN:orgone\nL:1/8\nI:Dulcimer\nMP:4\n\nf\n|: P1 M4 P1 m5 :|x5\n   P1 P8 !  m7\nff\n|: P1 M4 P1 m5 :|x5\n   P1 P8 !  m7\n\n|: P1 `m7 P1 P3 :|x5\n   P1 m7 !  P8\n|: P1 `m7 P1 P3 :|x5\n   P1 m7 !  P8\n\n.[6]\n\n|: P1 M4 P1 m5 :|x5\n   P1 P8 !  m7\n|: P1 M4 P1 m5 :|x5\n   P1 P8 !  m7\n\n.[12]\n\nmf\n|: P1 M2 P3 M4 m5 :| x2\n.[6]\nf\n|: P1 M2 P3 M4 m5 :| x2\n.[6]\nff\n|: P8 m7 P6 m5 M4 P3 :| x2\n.[6]\nff\n|: P8 m7 P6 m5 M4 P3 M2 P1 :| x2\n.[6]\nfff\nP8 ! m7 P6 ! m5 M4 P3 ! M2 P1 ! ! ! !\n\n---\nN:orgone\nL:1/8\nI:Synth Bass 1\nMP:4\n\nA1[0]\n\n.[4*6]\n\n|: P8 ! m7 :|x24\n   P8 ! m7\n   P6 ! m7\n|: P8 ! m7 :|x16\n   P8 ! m7\n   P6 ! m7\n\n|: P8 M4 P8 m5 :|x23\n   P8 m7 P8 !\n\n---\nN:orgone\nL:1/2\nI:Synth Brass 2\nMP:6\n_ .[26]\n|:\n    =O\n    M4=u_2\n    ..\n:|x3\n\n.[4]\n\n|:\n    =O\n    .\n    M4=u_1\n    .\n:|x4\n\n---\nN:percussion\nL:1/8\n|: hH.(hH) :| x6\n|: khs(hH) :| x6\n|: k(Hh)sH :| x6\n|: k(hH)sh :| x6\n\ny....(.H)\n\n|: khs(hH) :| x6\n|: khs(hH) :| x6\n\nC....(.H)\n\n|: khhshh :| x15\n\n54321c\n\n.............................\n";
+    }
+    diaschismicButton.onclick = e => {
+        scoreArea.value = "T:diaschismic\nI:String Ensemble 1\nL:1/1\n\n$ Treating diaschismic like a micro-temperament.\n$ Wouldn't shift in pitch even without tempering,\n$ but the voice-leading has micro-wolf intervals.\n|:\n~-P8/2[0]  $ This half-octave isn't pure JI and helps to hide the wolves.\n yVII=g_5R3 yIII=g     cI=y_35R\n~P8/2[0]   $ Diaschismic a.k.a. srutal has a half-octave period.\n`yVII=g     yIII=g_5R35 I=y_R351\n:|\n\n$ Spelling out the comma pump as a product of simpler rations.\n$ This sounds exactly the same as the lines above in diaschismic,\n$ but shifts in pitch by 2048/2025 on every repeat if left untempered.\n|:\n~4/3=6;8;5 ~2/3=6;5;4   ~8/5=8:6:5\n~2/3=6;5;4 ~4/3=6;8;5;4 ~4/5=4:5:6:8\n:|\n";
+    };
+</script>
+</body>
+</html>
