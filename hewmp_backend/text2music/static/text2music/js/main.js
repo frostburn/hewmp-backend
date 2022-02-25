@@ -1,8 +1,17 @@
 const MAX_VOICES = 256;
+const PICKUP = 0.1;
 const SILENCE = 1e-4;
-const ATTACK_TIME = 0.01;
-const SUSTAIN_LEVEL = 0.7;
-const RELEASE_TIME = 0.1;
+const DEFAULT_ADSR = {
+    type: "envelope",
+    subtype: "ADSR",
+    attack: 0.01,
+    decay: 0.1,
+    sustain: 0.7,
+    release: 0.1,
+};
+const PERCUSSION_GAINS = [];
+const DEFAULT_WAVEFORMS = ["sine", "square", "sawtooth", "triangle"];
+let WAVEFORMS;
 
 function appendVoice(voices, context, globalGain) {
     if (voices.length == MAX_VOICES) {
@@ -23,32 +32,60 @@ function cancelVoices(voices, context) {
         voice.gain.gain.cancelScheduledValues(context.currentTime);
         voice.gain.gain.setValueAtTime(0.0, context.currentTime);
     });
+    while (PERCUSSION_GAINS.length) {
+        const gain = PERCUSSION_GAINS.pop();
+        gain.gain.cancelScheduledValues(context.currentTime);
+        gain.gain.setValueAtTime(0.0, context.currentTime);
+        gain.disconnect();
+    }
 }
 
 function allocateIndices(track) {
     endTimes = Array(track.maxPolyphony).fill(-10000);
     let index = 0;
+    let envelope = DEFAULT_ADSR;
+    track.events.forEach(event => {
+        if (event.type == "envelope") {
+            envelope = event;
+        }
+        if (event.type == "n") {
+            event.envelope = envelope;
+        }
+    });
     track.events.sort((a, b) => a.t - b.t);
     track.events.forEach(event => {
-        for (let i = 0; i < track.maxPolyphony; ++i) {
-            index = (index + 1) % track.maxPolyphony;
-            if (endTimes[index] < event.t) {
-                break;
+        if (event.type == "n") {
+            for (let i = 0; i < track.maxPolyphony; ++i) {
+                index = (index + 1) % track.maxPolyphony;
+                if (endTimes[index] < event.t) {
+                    break;
+                }
             }
+            event.voiceIndex = index;
+            endTimes[index] = event.t + event.d;
         }
-        event.voiceIndex = index;
-        endTimes[index] = event.t + event.d;
     });
 }
 
 function playNotes(data, voices, context, globalGain) {
     cancelVoices(voices, context);
-
-    const now = context.currentTime;
+    context.suspend();
+    const now = context.currentTime + PICKUP;
     let voiceOffset = 0;
     data.tracks.forEach(track => {
         while (voices.length < voiceOffset + track.maxPolyphony) {
             appendVoice(voices, context, globalGain);
+        }
+        for (let i = 0; i < track.maxPolyphony; ++i) {
+            if (track.waveform === null) {
+                voices[i + voiceOffset].oscillator.type = "triangle";
+            } else {
+                if (DEFAULT_WAVEFORMS.includes(track.waveform)) {
+                    voices[i + voiceOffset].oscillator.type = track.waveform;
+                } else if (track.waveform in WAVEFORMS) {
+                    voices[i + voiceOffset].oscillator.setPeriodicWave(WAVEFORMS[track.waveform]);
+                }
+            }
         }
         allocateIndices(track);
         track.events.forEach(event => {
@@ -58,13 +95,14 @@ function playNotes(data, voices, context, globalGain) {
                 const velocity = event.v * track.volume;
                 voice.oscillator.frequency.setValueAtTime(event.f, time);
                 voice.gain.gain.setValueAtTime(SILENCE, time);
-                voice.gain.gain.linearRampToValueAtTime(velocity, time + ATTACK_TIME);
-                voice.gain.gain.linearRampToValueAtTime(SUSTAIN_LEVEL * velocity, time + event.d);
-                voice.gain.gain.linearRampToValueAtTime(SILENCE, time + event.d + RELEASE_TIME);
+                voice.gain.gain.linearRampToValueAtTime(velocity, time + event.envelope.attack);
+                voice.gain.gain.linearRampToValueAtTime(event.envelope.sustain * velocity, time + Math.min(event.d, event.envelope.decay));
+                voice.gain.gain.linearRampToValueAtTime(SILENCE, time + event.d + event.envelope.release);
             } else if (event.type == 'p') {
                 if (event.i in PERCUSSION_BUFFERS) {
                     const source = context.createBufferSource();
                     const gain = context.createGain();
+                    PERCUSSION_GAINS.push(gain);
                     source.buffer = PERCUSSION_BUFFERS[event.i];
                     gain.gain.setValueAtTime(event.v * track.volume, now);
                     source.connect(gain).connect(globalGain);
@@ -85,6 +123,7 @@ function main() {
     context.suspend();
 
     calculatePercussion(context);
+    WAVEFORMS = createWaveforms(context);
 
     const globalGain = context.createGain();
     globalGain.connect(context.destination);
