@@ -29,25 +29,24 @@ class BiquadNoise {
     }
 }
 
-// TODO: Calculate both channels at the same time to save resources
 function acousticBassDrumNoise() {
     return new Silence();
 }
-function acousticBassDrum(t, n, channel) {
+function acousticBassDrum(t, n) {
     return Math.sin(Math.sin(Math.tanh(t*100)*Math.exp(-t*t - t*90)*40)) * 1.1 * Math.exp(-t*10);
 }
 
 function sideStickNoise() {
     return new BiquadNoise(1, -0.6, 0, 1, 0.2, 0.2);
 }
-function sideStick(t, n, channel) {
+function sideStick(t, n) {
     return Math.sin(t*2238 + 2*Math.sin(t*2891 + 2*Math.sin(t*5509 + t*Math.exp(-t)*200) + n*0.4) * Math.exp(-10*t)) * Math.exp(-t*20);
 }
 
 function acousticSnareNoise() {
     return new BiquadNoise(3, 0, 0, 1, 1, 1);
 }
-function acousticSnare(t, n, channel) {
+function acousticSnare(t, n) {
     n *= Math.exp(-t*25);
     return Math.tanh(
         Math.sin(6117*t) * Math.exp(-t*25) * 0.1 +
@@ -59,16 +58,21 @@ function acousticSnare(t, n, channel) {
 }
 
 function handClapNoise() {
-    return new BiquadNoise(1, -1, 0, 1, 0, 0);
+    return [new BiquadNoise(1, -1, 0, 1, 0, 0), new BiquadNoise(1, -1, 0, 1, 0, 0)];
 }
-function handClap(t, n, channel) {
-    return Math.sin(2000*Math.log(10*t+5) + 0.5*n + 4*Math.sin(500*t*t + 10*t*n) - Math.exp(-t*100)*n) * t*Math.exp(-t*50)*60;
+function handClap(t, n) {
+    const env = t*Math.exp(-t*50)*60;
+    const f = 2000*Math.log(10*t+5);
+    return [
+        Math.sin(f + 0.5*n[0] + 4*Math.sin(500*t*t + 10*t*n[0]) - Math.exp(-t*100)*n[0]) * env,
+        Math.sin(f + 0.5*n[1] + 4*Math.sin(500*t*t + 10*t*n[1]) - Math.exp(-t*100)*n[1]) * env
+    ];
 }
 
 function closedHihatNoise() {
     return new BiquadNoise(1.5, 0, 0, 1, -1, 0);
 }
-function closedHihat(t, n, channel) {
+function closedHihat(t, n) {
     n *= Math.exp(-t*60);
     return Math.sin(10*n + Math.sin(n)) * 0.5;
 }
@@ -76,7 +80,7 @@ function closedHihat(t, n, channel) {
 function pedalHihatNoise() {
     return new BiquadNoise(1.25, 0, 0, 1, -0.5, 0);
 }
-function pedalHihat(t, n, channel) {
+function pedalHihat(t, n) {
     n *= Math.exp(-t*65);
     return Math.sin(8*n + Math.sin(2*n)) * 0.5;
 }
@@ -84,7 +88,7 @@ function pedalHihat(t, n, channel) {
 function rideCymbal1Noise() {
     return new BiquadNoise(1, -0.8, 0, 1, 0, 0);
 }
-function rideCymbal1(t, n, channel) {
+function rideCymbal1(t, n) {
     n *= Math.exp(-t*70);
     t *= 1.1;
     return Math.sin(3301*t - 4*Math.sin(8101*t - 3*Math.tanh(2*Math.sin(10501*t) + 0.4*n)) + n)*Math.exp(-t*6) * 0.5;
@@ -93,7 +97,7 @@ function rideCymbal1(t, n, channel) {
 function chineseCymbalNoise() {
     return new BiquadNoise(1, -0.5, 0, 1, -2, 1);
 }
-function chineseCymbal(t, n , channel) {
+function chineseCymbal(t, n) {
     n *= Math.exp(-t*5);
     return Math.tanh(20*n*n*n);
 }
@@ -101,7 +105,7 @@ function chineseCymbal(t, n , channel) {
 function crashCymbalNoise() {
     return new BiquadNoise(1, -0.4, 0, 1, 0, 0);
 }
-function crashCymbal(t, n , channel) {
+function crashCymbal(t, n) {
     n *= Math.exp(-t*5);
     return Math.tanh(2*n);
 }
@@ -109,7 +113,7 @@ function crashCymbal(t, n , channel) {
 function crashCymbal2Noise() {
     return new BiquadNoise(1, -0.5, 0, 1, 0, 0);
 }
-function crashCymbal2(t, n , channel) {
+function crashCymbal2(t, n) {
     n *= Math.exp(-t*5);
     return Math.tanh(2*n);
 }
@@ -117,7 +121,7 @@ function crashCymbal2(t, n , channel) {
 // function explosionNoise() {
 //     return new BiquadNoise(1, -0.99, 0, 1, 0, 0);
 // }
-// function explosion(t, n , channel) {
+// function explosion(t, n) {
 //     n *= Math.exp(-t*5);
 //     return Math.tanh(1*n);
 // }
@@ -126,7 +130,7 @@ function highTomNoise() {
     return new Silence();
 }
 
-function highTom(t, n, channel) {
+function highTom(t, n) {
     return Math.tanh(
         Math.sin(7117*t) * Math.exp(-t*27) * 0.05 +
         Math.sin(6217*t) * Math.exp(-t*25) * 0.1 +
@@ -139,7 +143,7 @@ function highTom(t, n, channel) {
 
 const hiMidTomNoise = highTomNoise;
 
-function hiMidTom(t, n, channel) {
+function hiMidTom(t, n) {
     return Math.tanh(
         Math.sin(7017*t) * Math.exp(-t*27) * 0.05 +
         Math.sin(6117*t) * Math.exp(-t*25) * 0.1 +
@@ -152,7 +156,7 @@ function hiMidTom(t, n, channel) {
 
 const lowMidTomNoise = highTomNoise;
 
-function lowMidTom(t, n, channel) {
+function lowMidTom(t, n) {
     return Math.tanh(
         Math.sin(6997*t) * Math.exp(-t*27) * 0.05 +
         Math.sin(6017*t) * Math.exp(-t*25) * 0.1 +
@@ -165,7 +169,7 @@ function lowMidTom(t, n, channel) {
 
 const lowTomNoise = highTomNoise;
 
-function lowTom(t, n, channel) {
+function lowTom(t, n) {
     return Math.tanh(
         Math.sin(6897*t) * Math.exp(-t*27) * 0.05 +
         Math.sin(5917*t) * Math.exp(-t*25) * 0.1 +
@@ -178,7 +182,7 @@ function lowTom(t, n, channel) {
 
 const highFloorTomNoise = highTomNoise;
 
-function highFloorTom(t, n, channel) {
+function highFloorTom(t, n) {
     return Math.tanh(
         Math.sin(6797*t) * Math.exp(-t*27) * 0.05 +
         Math.sin(5817*t) * Math.exp(-t*25) * 0.1 +
@@ -191,7 +195,7 @@ function highFloorTom(t, n, channel) {
 
 const lowFloorTomNoise = highTomNoise;
 
-function lowFloorTom(t, n, channel) {
+function lowFloorTom(t, n) {
     return Math.tanh(
         Math.sin(6697*t) * Math.exp(-t*27) * 0.05 +
         Math.sin(5717*t) * Math.exp(-t*25) * 0.1 +
@@ -233,9 +237,20 @@ function calculatePercussion(context) {
         const noise = nfun();
         for (let x = 0; x < bufferLength; ++x) {
             const t = x * dt;
-            const n = noise.process();
-            for (let channel = 0; channel < buffer.numberOfChannels; ++channel) {
-                buffer.getChannelData(channel)[x] = fun(t, n, channel);
+            let n;
+            if (Array.isArray(noise)) {
+                n = [noise[0].process(), noise[1].process()];
+            } else {
+                n = noise.process();
+            }
+            const result = fun(t, n);
+            if (!Array.isArray(result)) {
+                for (let channel = 0; channel < buffer.numberOfChannels; ++channel) {
+                    buffer.getChannelData(channel)[x] = result;
+                }
+            } else {
+                buffer.getChannelData(0)[x] = result[0];
+                buffer.getChannelData(1)[x] = result[1];
             }
         }
         PERCUSSION_BUFFERS[index] = buffer;
