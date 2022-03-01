@@ -29,6 +29,7 @@ class BiquadNoise {
     }
 }
 
+// TODO: Calculate both channels at the same time to save resources
 function acousticBassDrumNoise() {
     return new Silence();
 }
@@ -55,6 +56,13 @@ function acousticSnare(t, n, channel) {
         Math.sin(2234*t - n) * Math.exp(-t*15) * 0.5 +
         Math.sin(1000*t) * Math.exp(-t*14)
     );
+}
+
+function handClapNoise() {
+    return new BiquadNoise(1, -1, 0, 1, 0, 0);
+}
+function handClap(t, n, channel) {
+    return Math.sin(2000*Math.log(10*t+5) + 0.5*n + 4*Math.sin(500*t*t + 10*t*n) - Math.exp(-t*100)*n) * t*Math.exp(-t*50)*60;
 }
 
 function closedHihatNoise() {
@@ -198,6 +206,7 @@ const INDEX_FUN_DUR = [
     [35, acousticBassDrum, acousticBassDrumNoise, 0.5],
     [37, sideStick, sideStickNoise, 0.5],
     [38, acousticSnare, acousticSnareNoise, 0.5],
+    [39, handClap, handClapNoise, 0.6],
     [41, lowFloorTom, lowFloorTomNoise, 0.75],
     [42, closedHihat, closedHihatNoise, 0.5],
     [43, highFloorTom, highFloorTomNoise, 0.75],
