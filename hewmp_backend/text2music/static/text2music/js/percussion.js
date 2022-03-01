@@ -36,6 +36,11 @@ function acousticBassDrum(t, n) {
     return Math.sin(Math.sin(Math.tanh(t*100)*Math.exp(-t*t - t*90)*40)) * 1.1 * Math.exp(-t*10);
 }
 
+const electricBassDrumNoise = acousticBassDrumNoise
+function electricBassDrum(t, n) {
+    return Math.sin(Math.sin(Math.sin(Math.tanh(t*100)*Math.exp(-t*t - t*100)*40))) * 1.5 * Math.exp(-t*10);
+}
+
 function sideStickNoise() {
     return new BiquadNoise(1, -0.6, 0, 1, 0.2, 0.2);
 }
@@ -55,6 +60,18 @@ function acousticSnare(t, n) {
         Math.sin(2234*t - n) * Math.exp(-t*15) * 0.5 +
         Math.sin(1000*t) * Math.exp(-t*14)
     );
+}
+
+const electricSnareNoise = acousticSnareNoise;
+function electricSnare(t, n) {
+    n *= Math.exp(-t*25);
+    return Math.tanh(
+        Math.sin(6227*t) * Math.exp(-t*25) * 0.2 +
+        Math.sin(5542*t + 0.5*n) * Math.exp(-t*20) * 0.4 +
+        Math.sin(3443*t + n) * Math.exp(-t*30) * 0.6 +
+        Math.sin(2214*t - n) * Math.exp(-t*15) * 0.9 +
+        Math.sin(1005*t - Math.exp(-t*50)*2) * Math.exp(-t*14) * 1.5
+    )*0.9;
 }
 
 function handClapNoise() {
@@ -83,6 +100,14 @@ function pedalHihatNoise() {
 function pedalHihat(t, n) {
     n *= Math.exp(-t*65);
     return Math.sin(8*n + Math.sin(2*n)) * 0.5;
+}
+
+function openHihatNoise() {
+    return new BiquadNoise(1.5, 0, 0, 1, -1, 0);
+}
+function openHihat(t, n) {
+    n *= t*Math.exp(-t*20)*10;
+    return Math.sin(10*n + Math.sin(3*n)) * 0.5;
 }
 
 function rideCymbal1Noise() {
@@ -208,17 +233,20 @@ function lowFloorTom(t, n) {
 
 const INDEX_FUN_DUR = [
     [35, acousticBassDrum, acousticBassDrumNoise, 0.5],
+    [36, electricBassDrum, electricBassDrumNoise, 0.5],
     [37, sideStick, sideStickNoise, 0.5],
     [38, acousticSnare, acousticSnareNoise, 0.5],
     [39, handClap, handClapNoise, 0.6],
+    [40, electricSnare, electricSnareNoise, 0.5],
     [41, lowFloorTom, lowFloorTomNoise, 0.75],
     [42, closedHihat, closedHihatNoise, 0.5],
     [43, highFloorTom, highFloorTomNoise, 0.75],
     [44, pedalHihat, pedalHihatNoise, 0.5],
     [45, lowTom, lowTomNoise, 0.75],
+    [46, openHihat, openHihatNoise, 1.0],
     [47, lowMidTom, lowMidTomNoise, 0.75],
-    [49, crashCymbal, crashCymbalNoise, 1.0],
     [48, hiMidTom, hiMidTomNoise, 0.75],
+    [49, crashCymbal, crashCymbalNoise, 1.0],
     [50, highTom, highTomNoise, 0.75],
     [51, rideCymbal1, rideCymbal1Noise, 1.5],
     [52, chineseCymbal, chineseCymbalNoise, 1.0],
