@@ -20,5 +20,6 @@ from .views import index
 urlpatterns = [
     path('', index),
     path('text2music/', include('text2music.urls')),
+    path('audio-eval/', include('audio_eval.urls')),
     path('admin/', admin.site.urls),
 ]

@@ -1,0 +1,17 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Audio Eval (Beta) | lumipakkanen.com</title>
+    <script type="text/javascript" src="{% static 'js/waveform.js' %}"></script>
+    <script type="text/javascript" src="{% static 'audio-eval/js/main.js' %}"></script>
+</head>
+<body onload="main()">
+<h2>Audio Eval (Beta)</h2>
+<textarea id="textA" rows="20" cols="120"></textarea>
+<br>
+<textarea id="textB" rows="20" cols="120"></textarea>
+<br>
+<button id="evaluate">evaluate</button>
+</body>
+</html>

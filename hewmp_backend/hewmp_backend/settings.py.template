@@ -33,6 +33,7 @@ ALLOWED_HOSTS = ['165.22.205.200', 'lumipakkanen.com', '.lumipakkanen.com', 'loc
 
 INSTALLED_APPS = [
     'text2music.apps.Text2MusicConfig',
+    'audio_eval.apps.AudioEvalConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

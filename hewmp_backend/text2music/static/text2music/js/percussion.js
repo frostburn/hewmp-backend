@@ -119,6 +119,15 @@ function rideCymbal1(t, n) {
     return Math.sin(3301*t - 4*Math.sin(8101*t - 3*Math.tanh(2*Math.sin(10501*t) + 0.4*n)) + n)*Math.exp(-t*6) * 0.5;
 }
 
+function rideBellNoise() {
+    return new BiquadNoise(1, 0, 0, 1, 0, 0);
+}
+function rideBell(t, n) {
+    n *= t*Math.exp(-t*70);
+    const env = Math.exp(-t*10);
+    return softtri(850*t + softtri(7985*t + n, env), env)*env;
+}
+
 function chineseCymbalNoise() {
     return new BiquadNoise(1, -0.5, 0, 1, -2, 1);
 }
@@ -141,6 +150,14 @@ function crashCymbal2Noise() {
 function crashCymbal2(t, n) {
     n *= Math.exp(-t*5);
     return Math.tanh(2*n);
+}
+
+function splashCymbalNoise() {
+    return new BiquadNoise(1, -0.25, 0, 1, -1, 0);
+}
+function splashCymbal(t, n) {
+    n *= Math.exp(-t*12)*t;
+    return Math.tanh(1000*n*n);
 }
 
 // function explosionNoise() {
@@ -231,6 +248,23 @@ function lowFloorTom(t, n) {
     );
 }
 
+function tambourineNoise() {
+    return new Silence();
+}
+const tambourineOffsets = [];
+for (let i = 0; i < 10; ++i) {
+    tambourineOffsets.push(Math.random()*0.1);
+}
+function tambourine(time, n) {
+    let result = n;
+    tambourineOffsets.forEach((offset, i) => {
+        const t = time - offset
+        const env = Math.exp(-t*(15 + i)) * rtanh(t*1000);
+        result += softtri((1250-i)*t + softtri((9985 + 10*i)*t, env), env)*env;
+    });
+    return result * 0.25;
+}
+
 const INDEX_FUN_DUR = [
     [35, acousticBassDrum, acousticBassDrumNoise, 0.5],
     [36, electricBassDrum, electricBassDrumNoise, 0.5],
@@ -250,6 +284,9 @@ const INDEX_FUN_DUR = [
     [50, highTom, highTomNoise, 0.75],
     [51, rideCymbal1, rideCymbal1Noise, 1.5],
     [52, chineseCymbal, chineseCymbalNoise, 1.0],
+    [53, rideBell, rideBellNoise, 1.5],
+    [54, tambourine, tambourineNoise, 0.7],
+    [55, splashCymbal, splashCymbalNoise, 1.0],
     [57, crashCymbal2, crashCymbal2Noise, 1.0],
 ];
 
