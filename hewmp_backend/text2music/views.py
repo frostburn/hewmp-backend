@@ -2,7 +2,7 @@ import json
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.template import loader
-from hewmp.parser import parse_text, patterns_to_fractions, tracks_to_midi, prune
+from hewmp.parser import parse_text, patterns_to_fractions, patterns_to_cents, tracks_to_midi, prune, realize
 from io import StringIO, BytesIO
 
 # Create your views here.
@@ -18,6 +18,10 @@ def index(request):
         if data['type'] == 'fractions':
             sio = StringIO()
             patterns_to_fractions(patterns, sio)
+            return HttpResponse('<pre>' + sio.getvalue() + '</pre>')
+        elif data['type'] == 'cents':
+            sio = StringIO()
+            patterns_to_cents(realize(patterns), sio, config["tuning"].base_frequency)
             return HttpResponse('<pre>' + sio.getvalue() + '</pre>')
         elif data['type'] == 'midi':
             bio = BytesIO()
