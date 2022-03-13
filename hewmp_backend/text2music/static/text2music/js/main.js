@@ -77,7 +77,7 @@ function playNotes(data, voices, context, globalGain) {
             appendVoice(voices, context, globalGain);
         }
         let customWaveform;
-        if (!(track.waveform in DEFAULT_WAVEFORMS || track.waveform in WAVEFORMS)) {
+        if (!(track.waveform === null || track.waveform in DEFAULT_WAVEFORMS || track.waveform in WAVEFORMS)) {
             const parts = track.waveform.split(";");
             while (parts.length < 2) {
                 parts.push("");
