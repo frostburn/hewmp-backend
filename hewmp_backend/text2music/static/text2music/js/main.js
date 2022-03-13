@@ -76,6 +76,22 @@ function playNotes(data, voices, context, globalGain) {
         while (voices.length < voiceOffset + track.maxPolyphony) {
             appendVoice(voices, context, globalGain);
         }
+        let customWaveform;
+        if (!(track.waveform in DEFAULT_WAVEFORMS || track.waveform in WAVEFORMS)) {
+            const parts = track.waveform.split(";");
+            while (parts.length < 2) {
+                parts.push("");
+            }
+            const sineComponents = parts[0].split(" ").map(e => Number(e));
+            const cosineComponents = parts[1].split(" ").map(e => Number(e));
+            while (sineComponents.length < cosineComponents.length) {
+                sineComponents.push(0);
+            }
+            while (cosineComponents.length < sineComponents.length) {
+                cosineComponents.push(0);
+            }
+            customWaveform = context.createPeriodicWave(new Float32Array(sineComponents), new Float32Array(cosineComponents));
+        }
         for (let i = 0; i < track.maxPolyphony; ++i) {
             if (track.waveform === null) {
                 voices[i + voiceOffset].oscillator.type = "triangle";
@@ -84,6 +100,8 @@ function playNotes(data, voices, context, globalGain) {
                     voices[i + voiceOffset].oscillator.type = track.waveform;
                 } else if (track.waveform in WAVEFORMS) {
                     voices[i + voiceOffset].oscillator.setPeriodicWave(WAVEFORMS[track.waveform]);
+                } else {
+                    voices[i + voiceOffset].oscillator.setPeriodicWave(customWaveform);
                 }
             }
         }
