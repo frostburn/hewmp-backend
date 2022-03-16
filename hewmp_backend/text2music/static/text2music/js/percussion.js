@@ -266,33 +266,33 @@ function tambourine(time, n) {
 }
 
 const INDEX_FUN_DUR = [
-    [35, acousticBassDrum, acousticBassDrumNoise, 0.5],
-    [36, electricBassDrum, electricBassDrumNoise, 0.5],
-    [37, sideStick, sideStickNoise, 0.5],
-    [38, acousticSnare, acousticSnareNoise, 0.5],
+    // [35, acousticBassDrum, acousticBassDrumNoise, 0.5],
+    // [36, electricBassDrum, electricBassDrumNoise, 0.5],
+    // [37, sideStick, sideStickNoise, 0.5],
+    // [38, acousticSnare, acousticSnareNoise, 0.5],
     [39, handClap, handClapNoise, 0.6],
-    [40, electricSnare, electricSnareNoise, 0.5],
-    [41, lowFloorTom, lowFloorTomNoise, 0.75],
-    [42, closedHihat, closedHihatNoise, 0.5],
-    [43, highFloorTom, highFloorTomNoise, 0.75],
-    [44, pedalHihat, pedalHihatNoise, 0.5],
-    [45, lowTom, lowTomNoise, 0.75],
-    [46, openHihat, openHihatNoise, 1.0],
-    [47, lowMidTom, lowMidTomNoise, 0.75],
-    [48, hiMidTom, hiMidTomNoise, 0.75],
-    [49, crashCymbal, crashCymbalNoise, 1.0],
-    [50, highTom, highTomNoise, 0.75],
-    [51, rideCymbal1, rideCymbal1Noise, 1.5],
-    [52, chineseCymbal, chineseCymbalNoise, 1.0],
-    [53, rideBell, rideBellNoise, 1.5],
+    // [40, electricSnare, electricSnareNoise, 0.5],
+    // [41, lowFloorTom, lowFloorTomNoise, 0.75],
+    // [42, closedHihat, closedHihatNoise, 0.5],
+    // [43, highFloorTom, highFloorTomNoise, 0.75],
+    // [44, pedalHihat, pedalHihatNoise, 0.5],
+    // [45, lowTom, lowTomNoise, 0.75],
+    // [46, openHihat, openHihatNoise, 1.0],
+    // [47, lowMidTom, lowMidTomNoise, 0.75],
+    // [48, hiMidTom, hiMidTomNoise, 0.75],
+    // [49, crashCymbal, crashCymbalNoise, 1.0],
+    // [50, highTom, highTomNoise, 0.75],
+    // [51, rideCymbal1, rideCymbal1Noise, 1.5],
+    // [52, chineseCymbal, chineseCymbalNoise, 1.0],
+    // [53, rideBell, rideBellNoise, 1.5],
     [54, tambourine, tambourineNoise, 0.7],
-    [55, splashCymbal, splashCymbalNoise, 1.0],
-    [57, crashCymbal2, crashCymbal2Noise, 1.0],
+    // [55, splashCymbal, splashCymbalNoise, 1.0],
+    // [57, crashCymbal2, crashCymbal2Noise, 1.0],
 ];
 
 const PERCUSSION_BUFFERS = {};
 
-function calculatePercussion(context) {
+async function calculatePercussion(context) {
     const dt = 1 / context.sampleRate;
 
     INDEX_FUN_DUR.forEach(e => {
@@ -320,4 +320,49 @@ function calculatePercussion(context) {
         }
         PERCUSSION_BUFFERS[index] = buffer;
     });
+}
+
+const osdk = "the-open-source-drumkit/";
+
+const INDEX_FILENAMES = [
+    [35, osdk + "kick10.ogg"],  // Acoustic bass drum
+    [36, "porcupyne/kick.ogg"],  // Electric bass drum
+    [37, osdk + "sidestick10.ogg"],  // Side stick
+    [38, osdk + "snare-top-buttend10.ogg"],  // Acoustic snare
+    [39, "porcupyne/snare.ogg"],  // Electric snare
+    [41, osdk + "large-tom-under10.ogg"],  // Low floor tom
+    [42, osdk + "chh10.ogg"],  // Closed hi-hat
+    [43, osdk + "large-tom10.ogg"],  // High floor tom
+    [44, osdk + "fhh10.ogg"],  // Pedal hi-hat
+    [45, osdk + "medium-tom-under10.ogg"],  // Low tom
+    [46, osdk + "hohh10.ogg"],  // Open hi-hat (half-open)
+    [47, osdk + "medium-tom10.ogg"],  // Low mid tom
+    [48, osdk + "small-tom-under10.ogg"],  // Hi mid tom
+    [49, osdk + "crash-edge6.ogg"],  // Crash cymbal 1
+    [50, osdk + "small-tom10.ogg"],  // High tom
+    [51, osdk + "ride-mid-in10.ogg"],  // Ride cymbal 1
+    [52, osdk + "wood-stick-hit19.ogg"],  // Chinese cymbal (gong)
+    [53, osdk + "ride-bell10.ogg"],  // Ride bell
+    [55, "porcupyne/splash.ogg"],  // Splash cymbal
+    [57, osdk + "crash25.ogg"],  // Crash cymbal 2
+    [59, osdk + "ride-mid-out10.ogg"],  // Ride cymbal 2
+];
+
+async function fetchPercussion(context) {
+    const headers = {responseType: 'arraybuffer'};
+
+    const promises = [];
+    INDEX_FILENAMES.forEach(e => {
+        [index, filename] = e;
+        const arrayBufferPromise = fetch("/static/audio/" + filename, headers)
+        .then(response => response.arrayBuffer());
+        // XXX: This weird stuff binds the index variable to the chain.
+        const promise = Promise.all([Promise.resolve(index), arrayBufferPromise])
+        .then(index_data => context.decodeAudioData(
+            index_data[1], buffer => PERCUSSION_BUFFERS[index_data[0]] = buffer
+        ));
+        promises.push(promise);
+    });
+
+    return Promise.all(promises);
 }

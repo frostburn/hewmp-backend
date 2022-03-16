@@ -134,13 +134,14 @@ function playNotes(data, voices, context, globalGain) {
     context.resume();
 }
 
-function main() {
+async function main() {
     const csrftoken = getCookie("csrftoken");
 
     const context = new AudioContext();
     context.suspend();
 
-    calculatePercussion(context);
+    await Promise.all([calculatePercussion(context), fetchPercussion(context)]);
+
     WAVEFORMS = createWaveforms(context);
 
     const globalGain = context.createGain();
