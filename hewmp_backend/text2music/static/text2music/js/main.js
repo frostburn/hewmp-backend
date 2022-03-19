@@ -67,6 +67,24 @@ function allocateIndices(track) {
     });
 }
 
+const PENDING_CHOKES = {};
+const CHOKE_TIME = 0.05;
+
+function push_choke(index, gain) {
+    const pending = PENDING_CHOKES[index] || [];
+    pending.push(gain);
+    PENDING_CHOKES[index] = pending;
+}
+
+function apply_chokes(index, time) {
+    const pending = PENDING_CHOKES[index] || [];
+    while (pending.length) {
+        const gain = pending.pop();
+        gain.gain.setValueAtTime(gain.gain.value, time);
+        gain.gain.linearRampToValueAtTime(SILENCE, time + CHOKE_TIME);
+    }
+}
+
 function playNotes(data, voices, context, globalGain) {
     cancelVoices(voices, context);
     context.suspend();
@@ -125,6 +143,10 @@ function playNotes(data, voices, context, globalGain) {
                     gain.gain.setValueAtTime(event.v * track.volume, now);
                     source.connect(gain).connect(globalGain);
                     source.start(now + event.t);
+
+                    apply_chokes(event.i, now + event.t);
+                    push_choke(event.i, gain);
+                    (PERCUSSION_CHOKES[event.i] || []).forEach(choker => push_choke(choker, gain));
                 }
             }
         });

@@ -366,3 +366,11 @@ async function fetchPercussion(context) {
 
     return Promise.all(promises);
 }
+
+
+const PERCUSSION_CHOKES = {
+    // Hi-hat chokes
+    42: [44, 46],
+    44: [42, 46],
+    46: [42, 44],
+};
