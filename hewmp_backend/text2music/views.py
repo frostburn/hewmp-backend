@@ -21,7 +21,7 @@ def index(request):
             return HttpResponse('<pre>' + sio.getvalue() + '</pre>')
         elif data['type'] == 'cents':
             sio = StringIO()
-            patterns_to_cents(realize(patterns), sio, config["tuning"].base_frequency)
+            patterns_to_cents(realize(patterns, preserve_spacers=True), sio, config["tuning"].base_frequency)
             return HttpResponse('<pre>' + sio.getvalue() + '</pre>')
         elif data['type'] == 'midi':
             bio = BytesIO()
