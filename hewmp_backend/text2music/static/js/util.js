@@ -15,3 +15,11 @@ function getCookie(name) {
     }
     return cookieValue;
 }
+
+function gcd(a, b) {
+    if (b) {
+        return gcd(b, a % b);
+    } else {
+        return Math.abs(a);
+    }
+}

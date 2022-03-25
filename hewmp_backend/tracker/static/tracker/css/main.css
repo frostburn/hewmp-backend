@@ -1,0 +1,37 @@
+.key {
+    height: 50px;
+    width: 50px;
+    margin: 2px;
+    border-radius: 3px;
+    border: none;
+    background: #aaaaaa;
+    font-size: 1.05rem;
+    outline: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: top;
+    padding: 0;
+    position: relative;
+}
+
+.key-half-offset {
+    height: 50px;
+    width: 25px;
+    padding: 0;
+    display: inline-flex;
+    position: relative;
+}
+
+.key-quarter-offset {
+    height: 50px;
+    width: 12px;
+    padding: 0;
+    display: inline-flex;
+    position: relative;
+}
+
+.active {
+    background: #ffff00;
+}

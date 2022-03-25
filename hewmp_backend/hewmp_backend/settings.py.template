@@ -35,6 +35,7 @@ STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesSto
 INSTALLED_APPS = [
     'text2music.apps.Text2MusicConfig',
     'audio_eval.apps.AudioEvalConfig',
+    'tracker.apps.TrackerConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
