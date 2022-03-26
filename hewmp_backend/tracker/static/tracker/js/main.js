@@ -5,6 +5,26 @@ const CODES_TOP_FLATS = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digi
 const CODES_BOTTOM_SHARPS = ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyL', 'Semicolon', 'Quote'];
 const CODES_BOTTOM_ROW = ['IntlBackslash', 'KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB', 'KeyN', 'KeyM', 'Comma', 'Period', 'Slash'];
 
+const CODES_BOTTOM_EXTRA = [...CODES_BOTTOM_SHARPS];
+CODES_BOTTOM_EXTRA.push('Backslash');
+
+// Isomorphic layout
+const CODE_COORDS = {};
+
+let y = 0;
+let x = -1;
+CODES_BOTTOM_ROW.forEach(code => CODE_COORDS[code] = [x++, y]);
+y++;
+x = 0;
+CODES_BOTTOM_EXTRA.forEach(code => CODE_COORDS[code] = [x++, y]);
+y++
+x = 0;
+CODES_TOP_ROW.forEach(code => CODE_COORDS[code] = [x++, y]);
+y++
+x = 0;
+CODES_TOP_FLATS.forEach(code => CODE_COORDS[code] = [x++, y]);
+
+
 const MOS_PATTERNS = {
     "1L 4s": "Lssss",
     "2L 3s": "LsLss",
@@ -105,6 +125,8 @@ function clearContent() {
 }
 
 function populateMosSelection() {
+    // --- MOS ---
+
     clearContent();
     const contentDiv = document.getElementById("content");
     const title = document.createElement("h3");
@@ -148,6 +170,128 @@ function populateMosSelection() {
         }
     };
     contentDiv.appendChild(goButton);
+
+    // --- Isomorphic ---
+
+    contentDiv.appendChild(document.createElement("br"));
+    const isoTitle = document.createElement("h3");
+    isoTitle.appendChild(document.createTextNode("Select isomorphic keyboard"));
+    contentDiv.appendChild(isoTitle);
+
+    const edoLabel = document.createElement("label");
+    edoLabel.appendChild(document.createTextNode("edo: "));
+    edoLabel.for = "edo";
+    contentDiv.appendChild(edoLabel);
+    const edoInput = document.createElement("input");
+    edoInput.id = "edo";
+    edoInput.classList.add("number");
+    edoInput.type = "number";
+    edoInput.value = 12;
+    edoInput.min = 1;
+    contentDiv.appendChild(edoInput);
+
+    const xLabel = document.createElement("label");
+    xLabel.appendChild(document.createTextNode("x: "));
+    xLabel.for = "x";
+    contentDiv.appendChild(xLabel);
+    const xInput = document.createElement("input");
+    xInput.id = " x";
+    xInput.classList.add("number");
+    xInput.type = "number";
+    xInput.value = 1;
+    xInput.min = 1;
+    contentDiv.appendChild(xInput);
+
+    const yLabel = document.createElement("label");
+    yLabel.appendChild(document.createTextNode(" y: "));
+    yLabel.for = "y";
+    contentDiv.appendChild(yLabel);
+    const yInput = document.createElement("input");
+    yInput.id = "y";
+    yInput.classList.add("number");
+    yInput.type = "number";
+    yInput.value = 5;
+    yInput.min = 1;
+    contentDiv.appendChild(yInput);
+
+    const isoLabel = document.createElement("label");
+    isoLabel.appendChild(document.createTextNode(" "));
+    contentDiv.appendChild(isoLabel);
+    const isoButton = document.createElement("button");
+    isoButton.appendChild(document.createTextNode("Create"));
+    isoButton.onclick = e => {
+        selectIsomorphic(parseInt(edoInput.value), parseInt(xInput.value), parseInt(yInput.value));
+    };
+    contentDiv.appendChild(isoButton);
+}
+
+function initKeyboard() {
+    const keyboardDiv = document.createElement("div");
+    const digitRow = document.createElement("div");
+    keyboardDiv.appendChild(digitRow);
+    const qwertyRow = document.createElement("div");
+    keyboardDiv.appendChild(qwertyRow);
+    const asdfRow = document.createElement("div");
+    keyboardDiv.appendChild(asdfRow);
+    const zxcRow = document.createElement("div");
+    keyboardDiv.appendChild(zxcRow);
+
+    let offset = document.createElement("span");
+    offset.classList.add("key-half-offset");
+    qwertyRow.appendChild(offset);
+    offset = document.createElement("span");
+    offset.classList.add("key-half-offset");
+    asdfRow.appendChild(offset);
+
+    offset = document.createElement("span");
+    offset.classList.add("key-quarter-offset");
+    asdfRow.appendChild(offset);
+    offset = document.createElement("span");
+    offset.classList.add("key-quarter-offset");
+    zxcRow.appendChild(offset);
+
+    Object.getOwnPropertyNames(FREQ_BY_CODE).forEach(prop => delete FREQ_BY_CODE[prop]);
+    Object.getOwnPropertyNames(KEY_BY_CODE).forEach(prop => delete KEY_BY_CODE[prop]);
+
+    return keyboardDiv;
+}
+
+function selectIsomorphic(divisions, xDelta, yDelta) {
+    clearContent();
+    const contentDiv = document.getElementById("content");
+
+    const info = document.createElement("p");
+    info.appendChild(document.createTextNode(`You selected ${divisions}edo with x=${xDelta} and y=${yDelta}`));
+    contentDiv.appendChild(info);
+    const instructions = document.createElement("p");
+    instructions.appendChild(document.createTextNode("Play something using the keys QWERTY etc."));
+    contentDiv.appendChild(instructions);
+
+    const keyboardDiv = initKeyboard();
+    contentDiv.appendChild(keyboardDiv);
+
+    for (const [code, coords] of Object.entries(CODE_COORDS)) {
+        FREQ_BY_CODE[code] = 220 * Math.pow(2, (coords[0]*xDelta + coords[1]*yDelta) / divisions);
+    }
+
+    const rows = [
+        [0, CODES_TOP_FLATS],
+        [1, CODES_TOP_ROW],
+        [2, CODES_BOTTOM_EXTRA],
+        [3, CODES_BOTTOM_ROW],
+    ];
+    rows.forEach(e => {
+        const [index, row] = e;
+        row.forEach(code => {
+            const [x, y] = CODE_COORDS[code];
+            keyEl = document.createElement("span");
+            keyEl.classList.add("key");
+            text = document.createTextNode(`${x*xDelta + y*yDelta}`);
+            keyEl.appendChild(text);
+            keyboardDiv.children[index].appendChild(keyEl);
+            KEY_BY_CODE[code] = keyEl;
+        });
+    });
 }
 
 function selectMos(countL, countS) {
@@ -288,33 +432,14 @@ function selectStepRatio(pattern, l, s) {
     const instructions = document.createElement("p");
     instructions.appendChild(document.createTextNode("Play something using the keys QWERTY etc."));
     contentDiv.appendChild(instructions);
-    const keyboardDiv = document.createElement("div");
+
+    const keyboardDiv = initKeyboard();
     contentDiv.appendChild(keyboardDiv);
-    const digitRow = document.createElement("div");
-    keyboardDiv.appendChild(digitRow);
-    const qwertyRow = document.createElement("div");
-    keyboardDiv.appendChild(qwertyRow);
-    const asdfRow = document.createElement("div");
-    keyboardDiv.appendChild(asdfRow);
-    const zxcRow = document.createElement("div");
-    keyboardDiv.appendChild(zxcRow);
 
-    let offset = document.createElement("span");
-    offset.classList.add("key-half-offset");
-    qwertyRow.appendChild(offset);
-    offset = document.createElement("span");
-    offset.classList.add("key-half-offset");
-    asdfRow.appendChild(offset);
-
-    offset = document.createElement("span");
-    offset.classList.add("key-quarter-offset");
-    asdfRow.appendChild(offset);
-    offset = document.createElement("span");
-    offset.classList.add("key-quarter-offset");
-    zxcRow.appendChild(offset);
-
-    Object.getOwnPropertyNames(FREQ_BY_CODE).forEach(prop => delete FREQ_BY_CODE[prop]);
-    Object.getOwnPropertyNames(KEY_BY_CODE).forEach(prop => delete KEY_BY_CODE[prop]);
+    const digitRow = keyboardDiv.children[0];
+    const qwertyRow = keyboardDiv.children[1];
+    const asdfRow = keyboardDiv.children[2];
+    const zxcRow = keyboardDiv.children[3];
 
     let keyEl, text;
 
