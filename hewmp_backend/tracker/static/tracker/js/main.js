@@ -510,8 +510,8 @@ function selectStepRatio(pattern, l, s) {
 }
 
 function appendVoice(voices, context, globalGain) {
-    const oscillator = context.createOscillator();
-    oscillator.type = "triangle";
+    const oscillator = new FMOsc(context);
+    oscillator.modulatorFactor.setValueAtTime(7, context.currentTime);
     const gain = context.createGain();
     gain.gain.setValueAtTime(0.0, context.currentTime);
     oscillator.connect(gain).connect(globalGain);
@@ -532,6 +532,10 @@ function startVoice(voice, frequency, context) {
     voice.oscillator.frequency.setValueAtTime(frequency, time);
     voice.gain.gain.setValueAtTime(SILENCE, time);
     voice.gain.gain.linearRampToValueAtTime(1, time + ATTACK);
+
+    voice.oscillator.modulationIndex.cancelScheduledValues(time);
+    voice.oscillator.modulationIndex.setValueAtTime(5, time);
+    voice.oscillator.modulationIndex.exponentialRampToValueAtTime(1, time + 0.1);
 
     voice.active = true;
 }
