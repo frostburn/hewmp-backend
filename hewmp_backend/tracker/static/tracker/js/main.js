@@ -510,40 +510,29 @@ function selectStepRatio(pattern, l, s) {
 }
 
 function appendVoice(voices, context, globalGain) {
-    const oscillator = new FMOsc(context);
-    oscillator.modulatorFactor.setValueAtTime(7, context.currentTime);
-    const gain = context.createGain();
-    gain.gain.setValueAtTime(0.0, context.currentTime);
-    oscillator.connect(gain).connect(globalGain);
-    oscillator.start();
+    const instrument = new FMInstrument(context);
+    instrument.connect(globalGain);
+    instrument.start();
     const active = false;
-    voices.push({oscillator, gain, active});
+    voices.push({instrument, active});
 }
 
-const ATTACK = 0.01;
-const RELEASE = 0.1;
-
-function startVoice(voice, frequency, context) {
+function voiceOn(voice, frequency, context) {
     const time = context.currentTime;
 
-    voice.oscillator.frequency.cancelScheduledValues(time);
-    voice.gain.gain.cancelScheduledValues(time);
+    voice.instrument.frequency.cancelScheduledValues(time);
+    voice.instrument.frequency.setValueAtTime(frequency, time);
 
-    voice.oscillator.frequency.setValueAtTime(frequency, time);
-    voice.gain.gain.setValueAtTime(SILENCE, time);
-    voice.gain.gain.linearRampToValueAtTime(1, time + ATTACK);
-
-    voice.oscillator.modulationIndex.cancelScheduledValues(time);
-    voice.oscillator.modulationIndex.setValueAtTime(5, time);
-    voice.oscillator.modulationIndex.exponentialRampToValueAtTime(1, time + 0.1);
+    voice.instrument.noteOn(time);
 
     voice.active = true;
 }
 
-function stopVoice(voice, context) {
+function voiceOff(voice, context) {
     const time = context.currentTime;
-    voice.gain.gain.setValueAtTime(1, time);
-    voice.gain.gain.linearRampToValueAtTime(SILENCE, time + RELEASE);
+
+    voice.instrument.noteOff(time);
+
     voice.active = false;
 }
 
@@ -581,17 +570,19 @@ async function main() {
                     break;
                 }
             }
-            startVoice(voices[voiceIndex], freq, context);
+            voiceOn(voices[voiceIndex], freq, context);
             KEY_BY_CODE[e.code].classList.add("active");
             VOICE_BY_CODE[e.code] = voices[voiceIndex];
+            e.preventDefault();
         }
     }
 
     window.onkeyup = e => {
         const voice = VOICE_BY_CODE[e.code];
         if (voice !== undefined) {
-            stopVoice(voice, context);
+            voiceOff(voice, context);
             KEY_BY_CODE[e.code].classList.remove("active");
+            e.preventDefault();
         }
         delete VOICE_BY_CODE[e.code];
     }
