@@ -75,6 +75,18 @@ const STEP_RATIOS = [
     ["paucitonic", 1, 0],
 ];
 
+
+const NAME_RANGES = [
+    ["ultrasoft", 6, 8],
+    ["parasoft", 8, 9],
+    ["quasisoft", 9, 10],
+    ["minisoft", 10, 12],
+    ["minihard", 12, 15],
+    ["quasihard", 15, 18],
+    ["parahard", 18, 24],
+    ["ultrahard", 24, Infinity],
+];
+
 const FREQ_BY_CODE = {};
 
 const KEY_BY_CODE = {};
@@ -116,6 +128,26 @@ function populateMosSelection() {
         rowSpan.style.margin = "0 auto";
         pyramidDiv.appendChild(rowSpan);
     }
+
+    const br = document.createElement("br");
+    contentDiv.appendChild(br);
+    const freePatternLabel = document.createElement("label");
+    freePatternLabel.for = "free-pattern";
+    freePatternLabel.appendChild(document.createTextNode("Free pattern: "));
+    contentDiv.appendChild(freePatternLabel);
+    const freePatternInput = document.createElement("input");
+    freePatternInput.id = "free-pattern";
+    freePatternInput.placeholder = "ssLsL";
+    freePatternInput.pattern = "[Ls]+";
+    contentDiv.appendChild(freePatternInput);
+    const goButton = document.createElement("button");
+    goButton.appendChild(document.createTextNode("Go"));
+    goButton.onclick = e => {
+        if (freePatternInput.validity.valid) {
+            selectPattern(freePatternInput.value);
+        }
+    };
+    contentDiv.appendChild(goButton);
 }
 
 function selectMos(countL, countS) {
@@ -174,6 +206,74 @@ function selectPattern(pattern) {
         const br = document.createElement("br");
         contentDiv.appendChild(br);
     });
+    const largeLabel = document.createElement("label");
+    largeLabel.appendChild(document.createTextNode("L: "));
+    largeLabel.for = "large";
+    contentDiv.appendChild(largeLabel);
+    const largeInput = document.createElement("input");
+    largeInput.id = "large";
+    largeInput.classList.add("number");
+    largeInput.type = "number";
+    largeInput.value = 5;
+    largeInput.min = 1;
+    contentDiv.appendChild(largeInput);
+
+    const smallLabel = document.createElement("label");
+    smallLabel.appendChild(document.createTextNode("s: "));
+    smallLabel.for = "small";
+    contentDiv.appendChild(smallLabel);
+    const smallInput = document.createElement("input");
+    smallInput.id = "small";
+    smallInput.classList.add("number");
+    smallInput.type = "number";
+    smallInput.value = 4;
+    smallInput.min = 0;
+    smallInput.max = 6;
+    contentDiv.appendChild(smallInput);
+
+    const edoLabel = document.createElement("label");
+    edoLabel.appendChild(document.createTextNode(" = "));
+    contentDiv.appendChild(edoLabel);
+    const edoButton = document.createElement("button");
+    const edoText = document.createTextNode("");
+    edoButton.onclick = e => {
+        if (largeInput.validity.valid && smallInput.validity.valid) {
+            selectStepRatio(pattern, parseInt(largeInput.value), parseInt(smallInput.value));
+        }
+    };
+    edoButton.appendChild(edoText);
+    contentDiv.appendChild(edoButton);
+    function updateText() {
+        const l = largeInput.value;
+        const s = smallInput.value;
+        const divisions = countL*l + countS*s;
+        let name;
+
+        STEP_RATIOS.forEach(e => {
+            [name_, large, small] = e;
+            if (l*small == large*s) {
+                name = name_;
+            }
+        });
+        if (name === undefined) {
+            NAME_RANGES.forEach(e => {
+                [name_, low, high] = e;
+                if (low*s < 6*l && 6*l < high*s) {
+                    name = name_;
+                }
+            });
+        }
+
+        edoText.data = `${name}: ${divisions}edo`;
+    }
+
+    updateText();
+
+    largeInput.oninput = e => {
+        smallInput.max = largeInput.value;
+        updateText();
+    }
+    smallInput.oninput = updateText;
 }
 
 function selectStepRatio(pattern, l, s) {
@@ -291,7 +391,8 @@ function appendVoice(voices, context, globalGain) {
     gain.gain.setValueAtTime(0.0, context.currentTime);
     oscillator.connect(gain).connect(globalGain);
     oscillator.start();
-    voices.push({oscillator, gain});
+    const active = false;
+    voices.push({oscillator, gain, active});
 }
 
 const ATTACK = 0.01;
@@ -306,12 +407,15 @@ function startVoice(voice, frequency, context) {
     voice.oscillator.frequency.setValueAtTime(frequency, time);
     voice.gain.gain.setValueAtTime(SILENCE, time);
     voice.gain.gain.linearRampToValueAtTime(1, time + ATTACK);
+
+    voice.active = true;
 }
 
 function stopVoice(voice, context) {
     const time = context.currentTime;
     voice.gain.gain.setValueAtTime(1, time);
     voice.gain.gain.linearRampToValueAtTime(SILENCE, time + RELEASE);
+    voice.active = false;
 }
 
 async function main() {
@@ -319,6 +423,9 @@ async function main() {
 
     const context = new AudioContext();
     context.suspend();
+
+    const panicButton = document.getElementById("panic");
+    panicButton.onclick = e => {context.suspend();};
 
     WAVEFORMS = createWaveforms(context);
 
@@ -339,10 +446,15 @@ async function main() {
         const freq = FREQ_BY_CODE[e.code];
         const voice = VOICE_BY_CODE[e.code];
         if (freq !== undefined && voice === undefined) {
+            for (let i = 0; i < voices.length; ++i) {
+                voiceIndex = (voiceIndex + 1) % voices.length;
+                if (!voices[voiceIndex].active) {
+                    break;
+                }
+            }
             startVoice(voices[voiceIndex], freq, context);
             KEY_BY_CODE[e.code].classList.add("active");
             VOICE_BY_CODE[e.code] = voices[voiceIndex];
-            voiceIndex = (voiceIndex + 1) % voices.length;
         }
     }
 
