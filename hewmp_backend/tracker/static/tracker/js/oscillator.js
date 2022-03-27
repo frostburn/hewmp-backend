@@ -189,3 +189,60 @@ class Envelope {
         });
     }
 }
+
+
+class OscillatorInstrument {
+    constructor(context) {
+        this.oscillator = context.createOscillator();
+        this._gain = context.createGain();
+        this.gain = this._gain.gain;
+        this.gain.setValueAtTime(0, context.currentTime);
+        this.oscillator.connect(this._gain);
+        this.frequency = this.oscillator.frequency;
+        this.vibratoOsc = context.createOscillator();
+        this.vibratoFrequency = this.vibratoOsc.frequency;
+        this.vibratoGain = context.createGain();
+        this.vibratoAmount = this.vibratoGain.gain;
+        this.vibratoOsc.connect(this.vibratoGain).connect(this.oscillator.detune);
+
+        this.oscillator.type = "triangle";
+        this.vibratoFrequency.setValueAtTime(5, context.currentTime);
+
+        this.attack = 0.02;
+        this.decay = 0.1;
+        this.sustain = 0.7;
+        this.release = 0.15;
+
+        this.vibratoAttack = 0.2;
+        this.vibratoLevel = 10;
+    }
+
+    connect(destination) {
+        return this._gain.connect(destination);
+    }
+
+    start(when) {
+        this.oscillator.start(when);
+        this.vibratoOsc.start(when);
+    }
+
+    stop(when) {
+        this.oscillator.stop(when);
+        this.vibratoOsc.stop(when);
+    }
+
+    noteOn(when) {
+        this.gain.setValueAtTime(0, when);
+        this.gain.linearRampToValueAtTime(1, when + this.attack);
+        this.gain.linearRampToValueAtTime(this.sustain, when + this.attack + this.decay);
+
+        this.vibratoAmount.setValueAtTime(0, when);
+        this.vibratoAmount.linearRampToValueAtTime(this.vibratoLevel, when + this.vibratoAttack);
+    }
+
+    noteOff(when) {
+        this.gain.cancelScheduledValues(when);
+        this.gain.setValueAtTime(this.gain.value, when);
+        this.gain.linearRampToValueAtTime(0, when + this.release);
+    }
+}

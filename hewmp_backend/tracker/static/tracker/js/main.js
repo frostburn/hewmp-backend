@@ -510,7 +510,7 @@ function selectStepRatio(pattern, l, s) {
 }
 
 function appendVoice(voices, context, globalGain) {
-    const instrument = new FMInstrument(context);
+    const instrument = new OscillatorInstrument(context);
     instrument.connect(globalGain);
     instrument.start();
     const active = false;
