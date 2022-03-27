@@ -5,7 +5,8 @@ def index(request):
     <html>
     <head><title>Lumi Pakkanen | Music, Theory & Free Software</title></head>
     <body>
-        <a href="/text2music/">Text2Music</a><br><br>
+        <a href="/text2music/">Text2Music</a><br>
+        <a href="/tracker/">LumiTracker</a><br><br>
         Follow my socials:<br>
         <a href="https://www.youtube.com/channel/UCPzZoMs2YRIOfgraYQutXaA">YouTube</a><br>
         <a href="https://soundcloud.com/frostburn">SoundCloud</a><br>

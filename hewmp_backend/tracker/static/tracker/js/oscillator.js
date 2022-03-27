@@ -208,13 +208,13 @@ class OscillatorInstrument {
         this.oscillator.type = "triangle";
         this.vibratoFrequency.setValueAtTime(5, context.currentTime);
 
-        this.attack = 0.02;
+        this.attack = 0.01;
         this.decay = 0.1;
         this.sustain = 0.7;
         this.release = 0.15;
 
         this.vibratoAttack = 0.2;
-        this.vibratoLevel = 10;
+        this.vibratoDepth = 5;
     }
 
     connect(destination) {
@@ -237,7 +237,7 @@ class OscillatorInstrument {
         this.gain.linearRampToValueAtTime(this.sustain, when + this.attack + this.decay);
 
         this.vibratoAmount.setValueAtTime(0, when);
-        this.vibratoAmount.linearRampToValueAtTime(this.vibratoLevel, when + this.vibratoAttack);
+        this.vibratoAmount.linearRampToValueAtTime(this.vibratoDepth, when + this.vibratoAttack);
     }
 
     noteOff(when) {

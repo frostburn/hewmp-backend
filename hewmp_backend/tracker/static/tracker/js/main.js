@@ -115,7 +115,10 @@ const VOICE_BY_CODE = {};
 
 const SILENCE = 1e-4;
 
+const DEFAULT_WAVEFORMS = ["sine", "square", "sawtooth", "triangle"];
 let WAVEFORMS;
+
+const VOICES = [];
 
 function clearContent() {
     const contentDiv = document.getElementById("content");
@@ -292,6 +295,7 @@ function selectIsomorphic(divisions, xDelta, yDelta) {
             KEY_BY_CODE[code] = keyEl;
         });
     });
+    addInstrumentControls();
 }
 
 function selectMos(countL, countS) {
@@ -507,14 +511,195 @@ function selectStepRatio(pattern, l, s) {
         step += jump;
         lastJump = jump;
     }
+    addInstrumentControls();
 }
 
-function appendVoice(voices, context, globalGain) {
+function addInstrumentControls() {
+    const contentDiv = document.getElementById("content");
+    contentDiv.appendChild(document.createElement("br"));
+
+    const waveformLabel = document.createElement("label");
+    waveformLabel.for = "waveform";
+    waveformLabel.appendChild(document.createTextNode("Waveform: "));
+    contentDiv.appendChild(waveformLabel);
+    const select = document.createElement("select");
+    select.id = "waveform";
+    contentDiv.appendChild(select);
+    DEFAULT_WAVEFORMS.forEach(name => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.appendChild(document.createTextNode(name));
+        select.appendChild(option);
+    });
+    const waveforms = Object.keys(WAVEFORMS);
+    waveforms.sort();
+    waveforms.forEach(name => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.appendChild(document.createTextNode(name));
+        select.appendChild(option);
+    });
+    select.value = "triangle";
+    select.onchange = e => {
+        VOICES.forEach(voice => {
+            const name = select.value;
+            if (DEFAULT_WAVEFORMS.includes(name)) {
+                voice.instrument.oscillator.type = name;
+            } else {
+                voice.instrument.oscillator.setPeriodicWave(WAVEFORMS[name]);
+            }
+        });
+    };
+
+    contentDiv.appendChild(document.createElement("br"));
+    const attackLabel = document.createElement("label");
+    attackLabel.for = "attack";
+    attackLabel.appendChild(document.createTextNode("Attack: "));
+    contentDiv.appendChild(attackLabel);
+    const attackInput = document.createElement("input");
+    attackInput.id = "attack";
+    contentDiv.appendChild(attackInput);
+    attackInput.classList.add("number-ms");
+    attackInput.type = "number";
+    attackInput.value = 10;
+    attackInput.min = 0;
+    attackInput.step = 1;
+    attackInput.oninput = e => {
+        VOICES.forEach(voice => {
+            voice.instrument.attack = attackInput.value / 1000;
+        });
+    }
+    contentDiv.appendChild(document.createTextNode("ms"));
+
+    contentDiv.appendChild(document.createElement("br"));
+    const decayLabel = document.createElement("label");
+    decayLabel.for = "decay";
+    decayLabel.appendChild(document.createTextNode("Decay: "));
+    contentDiv.appendChild(decayLabel);
+    const decayInput = document.createElement("input");
+    decayInput.id = "decay";
+    contentDiv.appendChild(decayInput);
+    decayInput.classList.add("number-ms");
+    decayInput.type = "number";
+    decayInput.value = 100;
+    decayInput.min = 0;
+    decayInput.step = 5;
+    decayInput.oninput = e => {
+        VOICES.forEach(voice => {
+            voice.instrument.decay = decayInput.value / 1000;
+        });
+    }
+    contentDiv.appendChild(document.createTextNode("ms"));
+
+    contentDiv.appendChild(document.createElement("br"));
+    const sustainLabel = document.createElement("label");
+    sustainLabel.for = "sustain";
+    sustainLabel.appendChild(document.createTextNode("Sustain: "));
+    contentDiv.appendChild(sustainLabel);
+    const sustainInput = document.createElement("input");
+    sustainInput.id = "sustain";
+    contentDiv.appendChild(sustainInput);
+    sustainInput.classList.add("number-percent");
+    sustainInput.type = "number";
+    sustainInput.value = 70;
+    sustainInput.min = 0;
+    sustainInput.max = 100;
+    sustainInput.step = 1;
+    sustainInput.oninput = e => {
+        VOICES.forEach(voice => {
+            voice.instrument.sustain = sustainInput.value / 100;
+        });
+    }
+    contentDiv.appendChild(document.createTextNode("%"));
+
+    contentDiv.appendChild(document.createElement("br"));
+    const releaseLabel = document.createElement("label");
+    releaseLabel.for = "release";
+    releaseLabel.appendChild(document.createTextNode("Release: "));
+    contentDiv.appendChild(releaseLabel);
+    const releaseInput = document.createElement("input");
+    releaseInput.id = "release";
+    contentDiv.appendChild(releaseInput);
+    releaseInput.classList.add("number-ms");
+    releaseInput.type = "number";
+    releaseInput.value = 150;
+    releaseInput.min = 0;
+    releaseInput.step = 5;
+    releaseInput.oninput = e => {
+        VOICES.forEach(voice => {
+            voice.instrument.release = releaseInput.value / 1000;
+        });
+    }
+    contentDiv.appendChild(document.createTextNode("ms"));
+
+    contentDiv.appendChild(document.createElement("br"));
+    const vibratoAttackLabel = document.createElement("label");
+    vibratoAttackLabel.for = "vibrato-attack";
+    vibratoAttackLabel.appendChild(document.createTextNode("Vibrato attack: "));
+    contentDiv.appendChild(vibratoAttackLabel);
+    const vibratoAttackInput = document.createElement("input");
+    vibratoAttackInput.id = "vibrato-attack";
+    contentDiv.appendChild(vibratoAttackInput);
+    vibratoAttackInput.classList.add("number-ms");
+    vibratoAttackInput.type = "number";
+    vibratoAttackInput.value = 200;
+    vibratoAttackInput.min = 0;
+    vibratoAttackInput.step = 5;
+    vibratoAttackInput.oninput = e => {
+        VOICES.forEach(voice => {
+            voice.instrument.vibratoAttack = vibratoAttackInput.value / 1000;
+        });
+    }
+    contentDiv.appendChild(document.createTextNode("ms"));
+
+    contentDiv.appendChild(document.createElement("br"));
+    const vibratoDepthLabel = document.createElement("label");
+    vibratoDepthLabel.for = "vibrato-depth";
+    vibratoDepthLabel.appendChild(document.createTextNode("Vibrato depth: "));
+    contentDiv.appendChild(vibratoDepthLabel);
+    const vibratoDepthInput = document.createElement("input");
+    vibratoDepthInput.id = "vibrato-depth";
+    contentDiv.appendChild(vibratoDepthInput);
+    vibratoDepthInput.classList.add("number-ms");
+    vibratoDepthInput.type = "number";
+    vibratoDepthInput.value = 5;
+    vibratoDepthInput.min = 0;
+    vibratoDepthInput.step = 1;
+    vibratoDepthInput.oninput = e => {
+        VOICES.forEach(voice => {
+            voice.instrument.vibratoDepth = Number(vibratoDepthInput.value);
+        });
+    }
+    contentDiv.appendChild(document.createTextNode("cents"));
+
+    contentDiv.appendChild(document.createElement("br"));
+    const vibratoFrequencyLabel = document.createElement("label");
+    vibratoFrequencyLabel.for = "vibrato-frequency";
+    vibratoFrequencyLabel.appendChild(document.createTextNode("Vibrato frequency: "));
+    contentDiv.appendChild(vibratoFrequencyLabel);
+    const vibratoFrequencyInput = document.createElement("input");
+    vibratoFrequencyInput.id = "vibrato-frequency";
+    contentDiv.appendChild(vibratoFrequencyInput);
+    vibratoFrequencyInput.classList.add("number-percent");
+    vibratoFrequencyInput.type = "number";
+    vibratoFrequencyInput.value = 5;
+    vibratoFrequencyInput.min = 0;
+    vibratoFrequencyInput.step = 0.2;
+    vibratoFrequencyInput.oninput = e => {
+        VOICES.forEach(voice => {
+            // XXX: Hax
+            voice.instrument.vibratoFrequency.setValueAtTime(Number(vibratoFrequencyInput.value), 0);
+        });
+    }
+    contentDiv.appendChild(document.createTextNode("Hz"));
+}
+
+function appendVoice(context, globalGain) {
     const instrument = new OscillatorInstrument(context);
     instrument.connect(globalGain);
     instrument.start();
     const active = false;
-    voices.push({instrument, active});
+    VOICES.push({instrument, active});
 }
 
 function voiceOn(voice, frequency, context) {
@@ -551,10 +736,8 @@ async function main() {
     globalGain.connect(context.destination);
     globalGain.gain.setValueAtTime(0.249, context.currentTime);
 
-    const voices = [];
-
     for (let i = 0; i < 12; ++i) {
-        appendVoice(voices, context, globalGain);
+        appendVoice(context, globalGain);
     }
 
     let voiceIndex = 0;
@@ -564,16 +747,15 @@ async function main() {
         const freq = FREQ_BY_CODE[e.code];
         const voice = VOICE_BY_CODE[e.code];
         if (freq !== undefined && voice === undefined) {
-            for (let i = 0; i < voices.length; ++i) {
-                voiceIndex = (voiceIndex + 1) % voices.length;
-                if (!voices[voiceIndex].active) {
+            for (let i = 0; i < VOICES.length; ++i) {
+                voiceIndex = (voiceIndex + 1) % VOICES.length;
+                if (!VOICES[voiceIndex].active) {
                     break;
                 }
             }
-            voiceOn(voices[voiceIndex], freq, context);
+            voiceOn(VOICES[voiceIndex], freq, context);
             KEY_BY_CODE[e.code].classList.add("active");
-            VOICE_BY_CODE[e.code] = voices[voiceIndex];
-            e.preventDefault();
+            VOICE_BY_CODE[e.code] = VOICES[voiceIndex];
         }
     }
 
@@ -582,7 +764,6 @@ async function main() {
         if (voice !== undefined) {
             voiceOff(voice, context);
             KEY_BY_CODE[e.code].classList.remove("active");
-            e.preventDefault();
         }
         delete VOICE_BY_CODE[e.code];
     }

@@ -9,6 +9,14 @@ input:invalid {
     width: 2.5em;
 }
 
+.number-percent {
+    width: 3.0em;
+}
+
+.number-ms {
+    width: 3.6em;
+}
+
 .key {
     height: 50px;
     width: 50px;
