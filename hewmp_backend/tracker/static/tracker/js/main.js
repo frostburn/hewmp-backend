@@ -539,7 +539,7 @@ function voiceOff(voice, context) {
 async function main() {
     populateMosSelection();
 
-    const context = new AudioContext();
+    const context = new AudioContext({latencyHint: "interactive"});
     context.suspend();
 
     const panicButton = document.getElementById("panic");

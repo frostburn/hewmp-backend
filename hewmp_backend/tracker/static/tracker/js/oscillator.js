@@ -1,6 +1,7 @@
 class FMOsc {
     // Controls:
     // frequency, base frequency
+    // detune, cent offset from base frequency
     // modulationIndex, strenght of FM
     // carrierFactor, carrier frequency multiplier
     // modulatorFactor, modulator frequency multiplier
@@ -56,6 +57,7 @@ class FMOsc {
         this.carrier.stop(when);
         this.modulator.stop(when);
         this._frequency.stop(when);
+        this._detune.stop(when);
     }
 }
 
@@ -72,6 +74,16 @@ class FMInstrument {
         this.vibratoGain = context.createGain();
         this.vibratoAmount = this.vibratoGain.gain;
         this.vibratoOsc.connect(this.vibratoGain).connect(this.oscillator.detune);
+
+        this.amplitudeEnvelope = new Envelope([0, 1, .9, .8, .7, .6, .5, .4, .2, .0], 0.5, 5, 6, 9, 10);
+        this.indexEnvelope = new Envelope([6, 5, 4, 3, 2, 1, 0.7, 0.4, 0.3, 0.2], 0.15, 9, 10, 9, 10);
+        this.carrierEnvelope = new Envelope([2], 0.5, 0, 1, 0, 1);
+        this.modulatorEnvelope = new Envelope([7], 0.5, 0, 1, 0, 1);
+        this.detuneEnvelope = new Envelope([0], 0.5, 0, 1, 0, 1);
+        this.vibratoFrequencyEnvelope = new Envelope([6], 0.5, 0, 1, 0, 1);
+        this.vibratoAmountEnvelope = new Envelope([0, 5], 0.5, 1, 2, 1, 2);
+
+        this.noteOnTime = null;
     }
 
     connect(destination) {
@@ -91,24 +103,89 @@ class FMInstrument {
     // TODO: Velocity sensitivity
     // TODO: User-controlled envelopes
     noteOn(when) {
-        this.gain.setValueAtTime(0, when);
-        this.gain.linearRampToValueAtTime(1, when + 0.02);
-        this.gain.linearRampToValueAtTime(0.5, when + 0.35);
-
-        this.oscillator.carrierFactor.setValueAtTime(2, when);
-        this.oscillator.modulatorFactor.setValueAtTime(7, when);
-
-        this.oscillator.modulationIndex.setValueAtTime(6, when);
-        this.oscillator.modulationIndex.exponentialRampToValueAtTime(0.2, when + 0.15);
-
-        this.vibratoFrequency.setValueAtTime(6, when);
-        this.vibratoAmount.setValueAtTime(0, when);
-        this.vibratoAmount.linearRampToValueAtTime(5, when + 0.4);
+        this.noteOnTime = when;
+        this.amplitudeEnvelope.noteOn(this.gain, when);
+        this.indexEnvelope.noteOn(this.oscillator.modulationIndex, when);
+        this.carrierEnvelope.noteOn(this.oscillator.carrierFactor, when);
+        this.modulatorEnvelope.noteOn(this.oscillator.modulatorFactor, when);
+        this.detuneEnvelope.noteOn(this.oscillator.detune, when);
+        this.vibratoFrequencyEnvelope.noteOn(this.vibratoFrequency, when);
+        this.vibratoAmountEnvelope.noteOn(this.vibratoAmount, when);
     }
 
     noteOff(when) {
-        this.gain.cancelScheduledValues(when);
-        this.gain.setValueAtTime(this.gain.value, when);
-        this.gain.linearRampToValueAtTime(0, when + 0.1);
+        this.amplitudeEnvelope.noteOff(this.gain, when, this.noteOnTime);
+        this.indexEnvelope.noteOff(this.oscillator.modulationIndex, when, this.noteOnTime);
+        this.carrierEnvelope.noteOff(this.oscillator.carrierFactor, when, this.noteOnTime);
+        this.modulatorEnvelope.noteOff(this.oscillator.modulatorFactor, when, this.noteOnTime);
+        this.detuneEnvelope.noteOff(this.oscillator.detune, when, this.noteOnTime);
+        this.vibratoFrequencyEnvelope.noteOff(this.vibratoFrequency, when, this.noteOnTime);
+        this.vibratoAmountEnvelope.noteOff(this.vibratoAmount, when, this.noteOnTime);
+    }
+}
+
+const DEFAULT_UNROLL_DURATION = 20;
+
+class Envelope {
+    constructor(values, duration, sustainStart, sustainEnd, loopStart, loopEnd, linear=true) {
+        this.values = values;
+        this.duration = duration;
+        this.sustainStart = sustainStart;
+        this.sustainEnd = sustainEnd;
+        this.loopStart = loopStart;
+        this.loopEnd = loopEnd;
+        this.linear = linear;
+    }
+
+    unrollSustain(minDuration=DEFAULT_UNROLL_DURATION) {
+        const dFactor = this.duration / this.values.length;
+        let result = this.values.slice(0, this.sustainEnd);
+        let duration = dFactor * this.sustainEnd;
+        while (duration < minDuration) {
+            result = result.concat(this.values.slice(this.sustainStart, this.sustainEnd));
+            duration += dFactor * (this.sustainEnd - this.sustainStart);
+        }
+        return [result, duration];
+    }
+
+    unrollRelease(noteOnDuration, minDuration=DEFAULT_UNROLL_DURATION) {
+        const dFactor = this.duration / this.values.length;
+        let releaseIndex = Math.ceil(noteOnDuration / dFactor);
+        const offset = dFactor * releaseIndex - noteOnDuration;
+        while (releaseIndex > this.sustainEnd) {
+            releaseIndex -= this.sustainEnd - this.sustainStart;
+        }
+        let result = this.values.slice(releaseIndex, this.loopEnd);
+        let duration = dFactor * (this.loopEnd - releaseIndex);
+        while (duration < minDuration) {
+            result = result.concat(this.values.slice(this.loopStart, this.loopEnd));
+            duration += dFactor * (this.loopEnd - this.loopStart);
+        }
+        return [result, duration, offset];
+    }
+
+    noteOn(audioParam, when) {
+        const [values, duration] = this.unrollSustain();
+        this.applyValues(audioParam, when, values, duration, 0);
+    }
+
+    noteOff(audioParam, when, noteOnTime) {
+        const [values, duration, offset] = this.unrollRelease(when - noteOnTime);
+        this.applyValues(audioParam, when, values, duration, offset);
+    }
+
+    applyValues(audioParam, when, values, duration, offset) {
+        audioParam.cancelScheduledValues(when);
+        audioParam.setValueAtTime(values[0], when);
+        const dt = duration / values.length;
+        let time = offset;
+        values.forEach(value => {
+            if (this.linear) {
+                audioParam.linearRampToValueAtTime(value, when + time);
+            } else {
+                audioParam.setValueAtTime(value, when + time);
+            }
+            time += dt;
+        });
     }
 }
