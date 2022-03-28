@@ -348,12 +348,41 @@ function selectPattern(pattern) {
         const divisions = countL*l + countS*s;
         const button = document.createElement("button");
         const text = document.createTextNode(`${name}: ${divisions}edo`);
-        button.onclick = e => {selectStepRatio(pattern, l, s)};
+        button.onclick = e => {
+            const accidentalSign = parseInt(Array.from(document.getElementsByName("accidental-sign")).find(r => r.checked).value);
+            selectStepRatio(pattern, l, s, accidentalSign);
+        };
         button.appendChild(text);
         contentDiv.appendChild(button);
         const br = document.createElement("br");
         contentDiv.appendChild(br);
     });
+    const accidentalLabel = document.createElement("label");
+    accidentalLabel.appendChild(document.createTextNode("Accidentals: "));
+    contentDiv.appendChild(accidentalLabel);
+    const plusRadio = document.createElement("input");
+    plusRadio.type = "radio";
+    plusRadio.id = "accidental-plus";
+    plusRadio.name = "accidental-sign";
+    plusRadio.value = "1";
+    plusRadio.checked = true;
+    contentDiv.appendChild(plusRadio);
+    const plusLabel = document.createElement("label");
+    plusLabel.for = "accidental-plus";
+    plusLabel.appendChild(document.createTextNode("L+s"));
+    contentDiv.appendChild(plusLabel);
+    const minusRadio = document.createElement("input");
+    minusRadio.type = "radio";
+    minusRadio.id = "accidental-minus";
+    minusRadio.name = "accidental-sign";
+    minusRadio.value = "-1";
+    contentDiv.appendChild(minusRadio);
+    const minusLabel = document.createElement("label");
+    minusLabel.for = "accidental-minus";
+    minusLabel.appendChild(document.createTextNode("L-s"));
+    contentDiv.appendChild(minusLabel);
+    contentDiv.appendChild(document.createElement("br"));
+
     const largeLabel = document.createElement("label");
     largeLabel.appendChild(document.createTextNode("L: "));
     largeLabel.for = "large";
@@ -386,7 +415,8 @@ function selectPattern(pattern) {
     const edoText = document.createTextNode("");
     edoButton.onclick = e => {
         if (largeInput.validity.valid && smallInput.validity.valid) {
-            selectStepRatio(pattern, parseInt(largeInput.value), parseInt(smallInput.value));
+            const accidentalSign = parseInt(Array.from(document.getElementsByName("accidental-sign")).find(r => r.checked).value);
+            selectStepRatio(pattern, parseInt(largeInput.value), parseInt(smallInput.value), accidentalSign);
         }
     };
     edoButton.appendChild(edoText);
@@ -424,7 +454,7 @@ function selectPattern(pattern) {
     smallInput.oninput = updateText;
 }
 
-function selectStepRatio(pattern, l, s) {
+function selectStepRatio(pattern, l, s, accidentalSign) {
     [countL, countS] = extractCounts(pattern);
     const divisions = countL*l + countS*s;
 
@@ -445,7 +475,7 @@ function selectStepRatio(pattern, l, s) {
     const asdfRow = keyboardDiv.children[2];
     const zxcRow = keyboardDiv.children[3];
 
-    let keyEl, text;
+    let keyEl, text, accidental;
 
     let step = 0;
     let lastJump = 0;
@@ -456,9 +486,8 @@ function selectStepRatio(pattern, l, s) {
     }
 
     for (let i = 0; i < CODES_TOP_ROW.length; ++i) {
-        const stepType = pattern[i % pattern.length];
         let jump;
-        if (stepType == "L") {
+        if (pattern[i % pattern.length] == "L") {
             jump = l;
         } else {
             jump = s;
@@ -477,10 +506,17 @@ function selectStepRatio(pattern, l, s) {
         const topFlat = CODES_TOP_FLATS[i];
         keyEl = document.createElement("span");
         keyEl.classList.add("key");
-        if (lastJump == l) {
-            FREQ_BY_CODE[topFlat] = 440 * Math.pow(2, (step - l + s) / divisions);
-            text = document.createTextNode(`${step - l + s + divisions}`);
-            keyEl.appendChild(text);
+        if (l > s) {
+            if (lastJump == l) {
+                if (accidentalSign > 0) {
+                    accidental = step - lastJump + s;
+                } else {
+                    accidental = step - s;
+                }
+                FREQ_BY_CODE[topFlat] = 440 * Math.pow(2, accidental / divisions);
+                text = document.createTextNode(`${accidental + divisions}`);
+                keyEl.appendChild(text);
+            }
         }
         digitRow.appendChild(keyEl);
         KEY_BY_CODE[topFlat] = keyEl;
@@ -499,10 +535,17 @@ function selectStepRatio(pattern, l, s) {
             const bottomSharp = CODES_BOTTOM_SHARPS[i];
             keyEl = document.createElement("span");
             keyEl.classList.add("key");
-            if (jump == l) {
-                FREQ_BY_CODE[bottomSharp] = 220 * Math.pow(2, (step + s) / divisions);
-                text = document.createTextNode(`${step + s}`);
-                keyEl.appendChild(text);
+            if (l > s) {
+                if (jump == l) {
+                    if (accidentalSign > 0) {
+                        accidental = step + s;
+                    } else {
+                        accidental = step + jump - s;
+                    }
+                    FREQ_BY_CODE[bottomSharp] = 220 * Math.pow(2, accidental / divisions);
+                    text = document.createTextNode(`${accidental}`);
+                    keyEl.appendChild(text);
+                }
             }
             asdfRow.appendChild(keyEl);
             KEY_BY_CODE[bottomSharp] = keyEl;
