@@ -120,6 +120,8 @@ let WAVEFORMS;
 
 const VOICES = [];
 
+let DIVISIONS;
+
 function clearContent() {
     const contentDiv = document.getElementById("content");
     while (contentDiv.firstChild) {
@@ -296,6 +298,7 @@ function selectIsomorphic(divisions, xDelta, yDelta) {
         });
     });
     addInstrumentControls();
+    DIVISIONS = divisions;
 }
 
 function selectMos(countL, countS) {
@@ -555,6 +558,7 @@ function selectStepRatio(pattern, l, s, accidentalSign) {
         lastJump = jump;
     }
     addInstrumentControls();
+    DIVISIONS = divisions;
 }
 
 function addInstrumentControls() {
@@ -809,5 +813,37 @@ async function main() {
             KEY_BY_CODE[e.code].classList.remove("active");
         }
         delete VOICE_BY_CODE[e.code];
+    }
+
+    let mouseVoice = null;
+    let mouseKey = null;
+
+    window.onmousedown = e => {
+        if (e.target.classList.contains("key")) {
+            context.resume();
+            textNode = e.target.firstChild;
+            if (textNode !== null) {
+                const step = parseInt(textNode.textContent);
+                const freq = 220 * Math.pow(2, step / DIVISIONS);
+                for (let i = 0; i < VOICES.length; ++i) {
+                    voiceIndex = (voiceIndex + 1) % VOICES.length;
+                    if (!VOICES[voiceIndex].active) {
+                        break;
+                    }
+                }
+                mouseVoice = VOICES[voiceIndex];
+                voiceOn(mouseVoice, freq, context);
+                mouseKey = e.target;
+                mouseKey.classList.add("active");
+            }
+        }
+    }
+
+    window.onmouseup = e => {
+        if (mouseVoice !== null) {
+            voiceOff(mouseVoice, context);
+            mouseVoice = null;
+            mouseKey.classList.remove("active");
+        }
     }
 }
