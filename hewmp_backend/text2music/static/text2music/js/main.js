@@ -129,6 +129,8 @@ function playNotes(data, voices, context, globalGain) {
                 const voice = voices[event.voiceIndex + voiceOffset];
                 const time = now + event.t;
                 const velocity = event.v * track.volume;
+                voice.oscillator.frequency.cancelScheduledValues(time);
+                voice.gain.gain.cancelScheduledValues(time);
                 voice.oscillator.frequency.setValueAtTime(event.f, time);
                 voice.gain.gain.setValueAtTime(SILENCE, time);
                 voice.gain.gain.linearRampToValueAtTime(velocity, time + event.envelope.attack);
