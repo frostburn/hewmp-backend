@@ -36,21 +36,31 @@ input:invalid {
     user-select: none;
 }
 
-.shift {
+.left-shift {
+    cursor: auto;
+    width: 63px;
+}
+
+.right-shift {
+    cursor: auto;
     width: 120px;
 }
 
-.key-half-offset {
+.off {
+    cursor: auto;
+}
+
+.qwerty-offset {
     height: 50px;
-    width: 25px;
+    width: 75px;
     padding: 0;
     display: inline-flex;
     position: relative;
 }
 
-.key-quarter-offset {
+.asdf-offset {
     height: 50px;
-    width: 12px;
+    width: 88px;
     padding: 0;
     display: inline-flex;
     position: relative;

@@ -115,7 +115,9 @@ const VOICE_BY_CODE = {};
 
 const STICKY_KEYS = {};
 
-let SHIFT_EL;
+let BACKQUOTE_EL;
+let LEFT_SHIFT_EL;
+let RIGHT_SHIFT_EL;
 
 const SILENCE = 1e-4;
 
@@ -248,18 +250,27 @@ function initKeyboard() {
     keyboardDiv.appendChild(zxcRow);
 
     let offset = document.createElement("span");
-    offset.classList.add("key-half-offset");
+    offset.classList.add("qwerty-offset");
     qwertyRow.appendChild(offset);
-    offset = document.createElement("span");
-    offset.classList.add("key-half-offset");
-    asdfRow.appendChild(offset);
 
     offset = document.createElement("span");
-    offset.classList.add("key-quarter-offset");
+    offset.classList.add("asdf-offset");
     asdfRow.appendChild(offset);
-    offset = document.createElement("span");
-    offset.classList.add("key-quarter-offset");
-    zxcRow.appendChild(offset);
+
+    BACKQUOTE_EL = document.createElement("span");
+    BACKQUOTE_EL.appendChild(document.createTextNode("▭"));
+    BACKQUOTE_EL.classList.add("key");
+    BACKQUOTE_EL.classList.add("off");
+    digitRow.appendChild(BACKQUOTE_EL);
+
+    LEFT_SHIFT_EL = document.createElement("span");
+    LEFT_SHIFT_EL.classList.add("key");
+    LEFT_SHIFT_EL.classList.add("left-shift");
+    zxcRow.appendChild(LEFT_SHIFT_EL);
+
+    RIGHT_SHIFT_EL = document.createElement("span");
+    RIGHT_SHIFT_EL.classList.add("key");
+    RIGHT_SHIFT_EL.classList.add("right-shift");
 
     Object.getOwnPropertyNames(FREQ_BY_CODE).forEach(prop => delete FREQ_BY_CODE[prop]);
     Object.getOwnPropertyNames(KEY_BY_CODE).forEach(prop => delete KEY_BY_CODE[prop]);
@@ -303,10 +314,7 @@ function selectIsomorphic(divisions, xDelta, yDelta) {
             KEY_BY_CODE[code] = keyEl;
         });
     });
-    SHIFT_EL = document.createElement("span");
-    SHIFT_EL.classList.add("key");
-    SHIFT_EL.classList.add("shift");
-    keyboardDiv.children[3].appendChild(SHIFT_EL);
+    keyboardDiv.children[3].appendChild(RIGHT_SHIFT_EL);
     addInstrumentControls();
     DIVISIONS = divisions;
 }
@@ -567,10 +575,7 @@ function selectStepRatio(pattern, l, s, accidentalSign) {
         step += jump;
         lastJump = jump;
     }
-    SHIFT_EL = document.createElement("span");
-    SHIFT_EL.classList.add("key");
-    SHIFT_EL.classList.add("shift");
-    zxcRow.appendChild(SHIFT_EL);
+    zxcRow.appendChild(RIGHT_SHIFT_EL);
     addInstrumentControls();
     DIVISIONS = divisions;
 }
@@ -804,12 +809,15 @@ async function main() {
     let voiceIndex = 0;
 
     window.onkeydown = e => {
-        if (e.target instanceof HTMLInputElement) {
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) {
             return;
         }
         context.resume();
 
         if (e.code == "Backquote") {
+            if (BACKQUOTE_EL !== undefined) {
+                BACKQUOTE_EL.classList.add("active");
+            }
             Object.values(VOICE_BY_CODE).forEach(voice => {
                 voiceOff(voice, context);
             });
@@ -820,11 +828,17 @@ async function main() {
             Object.keys(STICKY_KEYS).forEach(code => delete STICKY_KEYS[code]);
         }
 
+        if (e.code == "ShiftLeft" && LEFT_SHIFT_EL !== undefined) {
+            LEFT_SHIFT_EL.classList.add("active");
+        }
+        if (e.code == "ShiftRight" && RIGHT_SHIFT_EL !== undefined) {
+            RIGHT_SHIFT_EL.classList.add("active");
+        }
+
         if (e.key == "Shift") {
             Object.keys(VOICE_BY_CODE).forEach(code => {
                 STICKY_KEYS[code] = "pending";
             });
-            SHIFT_EL.classList.add("active");
             return;
         }
 
@@ -865,8 +879,15 @@ async function main() {
     }
 
     window.onkeyup = e => {
-        if (e.key == "Shift") {
-            SHIFT_EL.classList.remove("active");
+        if (e.code == "Backquote" && BACKQUOTE_EL !== undefined) {
+            BACKQUOTE_EL.classList.remove("active");
+        }
+        if (e.code == "ShiftRight" && RIGHT_SHIFT_EL !== undefined) {
+            RIGHT_SHIFT_EL.classList.remove("active");
+            return;
+        }
+        if (e.code == "ShiftLeft" && LEFT_SHIFT_EL !== undefined) {
+            LEFT_SHIFT_EL.classList.remove("active");
             return;
         }
         if (STICKY_KEYS[e.code] == "pending") {
@@ -894,7 +915,11 @@ async function main() {
 
     window.onmousedown = e => {
         // TODO: mouse sustain
-        if (e.target.classList.contains("key") && !e.target.classList.contains("shift")) {
+        const classList = e.target.classList;
+        if (classList.contains("left-shift") || classList.contains("right-shift") || classList.contains("off")) {
+            return;
+        }
+        if (classList.contains("key")) {
             context.resume();
             textNode = e.target.firstChild;
             if (textNode !== null) {
