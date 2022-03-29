@@ -809,6 +809,17 @@ async function main() {
         }
         context.resume();
 
+        if (e.code == "Backquote") {
+            Object.values(VOICE_BY_CODE).forEach(voice => {
+                voiceOff(voice, context);
+            });
+            Object.values(KEY_BY_CODE).forEach(key => {
+                key.classList.remove("active");
+            });
+            Object.keys(VOICE_BY_CODE).forEach(code => delete VOICE_BY_CODE[code]);
+            Object.keys(STICKY_KEYS).forEach(code => delete STICKY_KEYS[code]);
+        }
+
         if (e.key == "Shift") {
             Object.keys(VOICE_BY_CODE).forEach(code => {
                 STICKY_KEYS[code] = "pending";
