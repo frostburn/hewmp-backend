@@ -147,7 +147,7 @@ function populateMosSelection() {
     contentDiv.appendChild(title);
 
     const pyramidDiv = document.createElement("div");
-    pyramidDiv.style.width = "50%";
+    pyramidDiv.classList.add("pyramid");
     contentDiv.appendChild(pyramidDiv);
     for (let size = 5; size < 12; ++size) {
         const rowSpan = document.createElement("span");
@@ -159,8 +159,7 @@ function populateMosSelection() {
             button.appendChild(text);
             rowSpan.appendChild(button);
         }
-        rowSpan.style.display = "table";
-        rowSpan.style.margin = "0 auto";
+        rowSpan.classList.add("pyramid-row");
         pyramidDiv.appendChild(rowSpan);
     }
 

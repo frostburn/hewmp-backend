@@ -1,3 +1,12 @@
+.pyramid {
+    width: 32em;
+}
+
+.pyramid-row {
+    display: table;
+    margin: 0 auto;
+}
+
 input {
     border: gray solid 2px;
 }
