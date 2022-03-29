@@ -786,6 +786,17 @@ function voiceOff(voice, context) {
     voice.active = false;
 }
 
+function keyOff(context) {
+    Object.values(VOICE_BY_CODE).forEach(voice => {
+        voiceOff(voice, context);
+    });
+    Object.values(KEY_BY_CODE).forEach(key => {
+        key.classList.remove("active");
+    });
+    Object.keys(VOICE_BY_CODE).forEach(code => delete VOICE_BY_CODE[code]);
+    Object.keys(STICKY_KEYS).forEach(code => delete STICKY_KEYS[code]);
+}
+
 async function main() {
     populateMosSelection();
 
@@ -793,7 +804,19 @@ async function main() {
     context.suspend();
 
     const panicButton = document.getElementById("panic");
-    panicButton.onclick = e => {context.suspend();};
+    panicButton.onclick = e => {
+        context.suspend();
+        keyOff(context);
+    }
+
+    const resetButton = document.getElementById("reset");
+    resetButton.onclick = e => {
+        keyOff(context);
+        Object.keys(FREQ_BY_CODE).forEach(code => delete FREQ_BY_CODE[code]);
+        Object.keys(KEY_BY_CODE).forEach(code => delete KEY_BY_CODE[code]);
+        VOICES.forEach(voice => voice.instrument.reset(context));
+        populateMosSelection();
+    }
 
     WAVEFORMS = createWaveforms(context);
 
@@ -817,14 +840,7 @@ async function main() {
             if (BACKQUOTE_EL !== undefined) {
                 BACKQUOTE_EL.classList.add("active");
             }
-            Object.values(VOICE_BY_CODE).forEach(voice => {
-                voiceOff(voice, context);
-            });
-            Object.values(KEY_BY_CODE).forEach(key => {
-                key.classList.remove("active");
-            });
-            Object.keys(VOICE_BY_CODE).forEach(code => delete VOICE_BY_CODE[code]);
-            Object.keys(STICKY_KEYS).forEach(code => delete STICKY_KEYS[code]);
+            keyOff(context);
         }
 
         if (e.code == "ShiftLeft" && LEFT_SHIFT_EL !== undefined) {
@@ -915,7 +931,11 @@ async function main() {
     window.onmousedown = e => {
         // TODO: mouse sustain
         const classList = e.target.classList;
-        if (classList.contains("left-shift") || classList.contains("right-shift") || classList.contains("off")) {
+        if (classList.contains("off")) {
+            keyOff(context);
+            return;
+        }
+        if (classList.contains("left-shift") || classList.contains("right-shift")) {
             return;
         }
         if (classList.contains("key")) {
@@ -947,6 +967,3 @@ async function main() {
         }
     }
 }
-
-// TODO: back to the top
-// TODO: Bug reports and feature requests

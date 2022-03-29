@@ -204,7 +204,10 @@ class OscillatorInstrument {
         this.vibratoGain = context.createGain();
         this.vibratoAmount = this.vibratoGain.gain;
         this.vibratoOsc.connect(this.vibratoGain).connect(this.oscillator.detune);
+        this.reset(context);
+    }
 
+    reset(context) {
         this.oscillator.type = "triangle";
         this.vibratoFrequency.setValueAtTime(5, context.currentTime);
 
@@ -232,10 +235,12 @@ class OscillatorInstrument {
     }
 
     noteOn(when) {
+        this.gain.cancelScheduledValues(when);
         this.gain.setValueAtTime(0, when);
         this.gain.linearRampToValueAtTime(1, when + this.attack);
         this.gain.linearRampToValueAtTime(this.sustain, when + this.attack + this.decay);
 
+        this.vibratoAmount.cancelScheduledValues(when);
         this.vibratoAmount.setValueAtTime(0, when);
         this.vibratoAmount.linearRampToValueAtTime(this.vibratoDepth, when + this.vibratoAttack);
     }
