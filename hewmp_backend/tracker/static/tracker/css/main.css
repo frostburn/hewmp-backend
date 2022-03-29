@@ -33,6 +33,11 @@ input:invalid {
     vertical-align: top;
     padding: 0;
     position: relative;
+    user-select: none;
+}
+
+.shift {
+    width: 120px;
 }
 
 .key-half-offset {
@@ -52,5 +57,9 @@ input:invalid {
 }
 
 .active {
-    background: #ffff00;
+    background: #ffee11;
+}
+
+.mouse-active {
+    background: #22ff11;
 }

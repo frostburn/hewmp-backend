@@ -113,6 +113,10 @@ const KEY_BY_CODE = {};
 
 const VOICE_BY_CODE = {};
 
+const STICKY_KEYS = {};
+
+let SHIFT_EL;
+
 const SILENCE = 1e-4;
 
 const DEFAULT_WAVEFORMS = ["sine", "square", "sawtooth", "triangle"];
@@ -121,6 +125,8 @@ let WAVEFORMS;
 const VOICES = [];
 
 let DIVISIONS;
+
+const PLAY_INSTRUCTIONS = "Play something using the keys QWERTY etc. The Shift key toggles sustain.";
 
 function clearContent() {
     const contentDiv = document.getElementById("content");
@@ -269,7 +275,7 @@ function selectIsomorphic(divisions, xDelta, yDelta) {
     info.appendChild(document.createTextNode(`You selected ${divisions}edo with x=${xDelta} and y=${yDelta}`));
     contentDiv.appendChild(info);
     const instructions = document.createElement("p");
-    instructions.appendChild(document.createTextNode("Play something using the keys QWERTY etc."));
+    instructions.appendChild(document.createTextNode(PLAY_INSTRUCTIONS));
     contentDiv.appendChild(instructions);
 
     const keyboardDiv = initKeyboard();
@@ -297,6 +303,10 @@ function selectIsomorphic(divisions, xDelta, yDelta) {
             KEY_BY_CODE[code] = keyEl;
         });
     });
+    SHIFT_EL = document.createElement("span");
+    SHIFT_EL.classList.add("key");
+    SHIFT_EL.classList.add("shift");
+    keyboardDiv.children[3].appendChild(SHIFT_EL);
     addInstrumentControls();
     DIVISIONS = divisions;
 }
@@ -467,7 +477,7 @@ function selectStepRatio(pattern, l, s, accidentalSign) {
     info.appendChild(document.createTextNode(`You selected ${pattern} for ${divisions}edo`));
     contentDiv.appendChild(info);
     const instructions = document.createElement("p");
-    instructions.appendChild(document.createTextNode("Play something using the keys QWERTY etc."));
+    instructions.appendChild(document.createTextNode(PLAY_INSTRUCTIONS));
     contentDiv.appendChild(instructions);
 
     const keyboardDiv = initKeyboard();
@@ -557,6 +567,10 @@ function selectStepRatio(pattern, l, s, accidentalSign) {
         step += jump;
         lastJump = jump;
     }
+    SHIFT_EL = document.createElement("span");
+    SHIFT_EL.classList.add("key");
+    SHIFT_EL.classList.add("shift");
+    zxcRow.appendChild(SHIFT_EL);
     addInstrumentControls();
     DIVISIONS = divisions;
 }
@@ -790,12 +804,40 @@ async function main() {
     let voiceIndex = 0;
 
     window.onkeydown = e => {
+        if (e.target instanceof HTMLInputElement) {
+            return;
+        }
         context.resume();
+
+        if (e.key == "Shift") {
+            Object.keys(VOICE_BY_CODE).forEach(code => {
+                STICKY_KEYS[code] = "pending";
+            });
+            SHIFT_EL.classList.add("active");
+            return;
+        }
+
+        if (STICKY_KEYS[e.code] == "active") {
+            const voice = VOICE_BY_CODE[e.code];
+            if (voice !== undefined) {
+                voiceOff(voice, context);
+                KEY_BY_CODE[e.code].classList.remove("active");
+            }
+            delete VOICE_BY_CODE[e.code];
+            delete STICKY_KEYS[e.code];
+            return;
+        }
+
+        if (STICKY_KEYS[e.code] == "pending") {
+            return;
+        }
+
         const freq = FREQ_BY_CODE[e.code];
         const voice = VOICE_BY_CODE[e.code];
         if (freq !== undefined && voice === undefined) {
             for (let i = 0; i < VOICES.length; ++i) {
                 voiceIndex = (voiceIndex + 1) % VOICES.length;
+                // TODO: Replace active flags with age so that old notes can be cut off on sustain clusters.
                 if (!VOICES[voiceIndex].active) {
                     break;
                 }
@@ -803,12 +845,33 @@ async function main() {
             voiceOn(VOICES[voiceIndex], freq, context);
             KEY_BY_CODE[e.code].classList.add("active");
             VOICE_BY_CODE[e.code] = VOICES[voiceIndex];
+            if (e.shiftKey) {
+                // Pending state required to filter out OS repeats
+                // that don't involve physically lifting the key.
+                STICKY_KEYS[e.code] = "pending";
+            }
         }
     }
 
     window.onkeyup = e => {
+        if (e.key == "Shift") {
+            SHIFT_EL.classList.remove("active");
+            return;
+        }
+        if (STICKY_KEYS[e.code] == "pending") {
+            STICKY_KEYS[e.code] = "active";
+            return;
+        }
+        if (STICKY_KEYS[e.code] == "active") {
+            return;
+        }
+
         const voice = VOICE_BY_CODE[e.code];
         if (voice !== undefined) {
+            if (e.shiftKey) {
+                STICKY_KEYS[e.code] = "active";
+                return;
+            }
             voiceOff(voice, context);
             KEY_BY_CODE[e.code].classList.remove("active");
         }
@@ -819,7 +882,8 @@ async function main() {
     let mouseKey = null;
 
     window.onmousedown = e => {
-        if (e.target.classList.contains("key")) {
+        // TODO: mouse sustain
+        if (e.target.classList.contains("key") && !e.target.classList.contains("shift")) {
             context.resume();
             textNode = e.target.firstChild;
             if (textNode !== null) {
@@ -834,7 +898,8 @@ async function main() {
                 mouseVoice = VOICES[voiceIndex];
                 voiceOn(mouseVoice, freq, context);
                 mouseKey = e.target;
-                mouseKey.classList.add("active");
+                // TODO: Track voice state not element
+                mouseKey.classList.add("mouse-active");
             }
         }
     }
@@ -843,7 +908,10 @@ async function main() {
         if (mouseVoice !== null) {
             voiceOff(mouseVoice, context);
             mouseVoice = null;
-            mouseKey.classList.remove("active");
+            mouseKey.classList.remove("mouse-active");
         }
     }
 }
+
+// TODO: back to the top
+// TODO: Bug reports and feature requests
