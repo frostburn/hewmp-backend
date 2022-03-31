@@ -1,30 +1,3 @@
-// Piano-style layout in two rows. There aren't sharps and flats for everything due to physical keyboard limitations.
-const CODES_TOP_ROW = ['KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY', 'KeyU', 'KeyI', 'KeyO', 'KeyP', 'BracketLeft', 'BracketRight'];
-const CODES_TOP_FLATS = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal'];
-
-const CODES_BOTTOM_SHARPS = ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyL', 'Semicolon', 'Quote'];
-const CODES_BOTTOM_ROW = ['IntlBackslash', 'KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB', 'KeyN', 'KeyM', 'Comma', 'Period', 'Slash'];
-
-const CODES_BOTTOM_EXTRA = [...CODES_BOTTOM_SHARPS];
-CODES_BOTTOM_EXTRA.push('Backslash');
-
-// Isomorphic layout
-const CODE_COORDS = {};
-
-let y = 0;
-let x = -1;
-CODES_BOTTOM_ROW.forEach(code => CODE_COORDS[code] = [x++, y]);
-y++;
-x = 0;
-CODES_BOTTOM_EXTRA.forEach(code => CODE_COORDS[code] = [x++, y]);
-y++
-x = 0;
-CODES_TOP_ROW.forEach(code => CODE_COORDS[code] = [x++, y]);
-y++
-x = 0;
-CODES_TOP_FLATS.forEach(code => CODE_COORDS[code] = [x++, y]);
-
-
 const MOS_PATTERNS = {
     "1L 4s": "Lssss",
     "2L 3s": "LsLss",
@@ -107,19 +80,15 @@ const NAME_RANGES = [
     ["ultrahard", 24, Infinity],
 ];
 
-const FREQ_BY_CODE = {};
+const MONZO_BY_COORDS = new Map();
 
-const KEY_BY_CODE = {};
+const KEY_EL_BY_COORDS = new Map();
 
-const VOICE_BY_CODE = {};
-
-const STICKY_KEYS = {};
+const VOICE_BY_COORDS = new Map();
 
 let BACKQUOTE_EL;
 let LEFT_SHIFT_EL;
 let RIGHT_SHIFT_EL;
-
-const SILENCE = 1e-4;
 
 const DEFAULT_WAVEFORMS = ["sine", "square", "sawtooth", "triangle"];
 let WAVEFORMS;
@@ -127,6 +96,8 @@ let WAVEFORMS;
 const VOICES = [];
 
 let DIVISIONS;
+
+let MAPPING;
 
 const PLAY_INSTRUCTIONS = "Play something using the keys QWERTY etc. The Shift key toggles sustain.";
 
@@ -271,8 +242,8 @@ function initKeyboard() {
     RIGHT_SHIFT_EL.classList.add("key");
     RIGHT_SHIFT_EL.classList.add("right-shift");
 
-    Object.getOwnPropertyNames(FREQ_BY_CODE).forEach(prop => delete FREQ_BY_CODE[prop]);
-    Object.getOwnPropertyNames(KEY_BY_CODE).forEach(prop => delete KEY_BY_CODE[prop]);
+    MONZO_BY_COORDS.clear();
+    KEY_EL_BY_COORDS.clear();
 
     return keyboardDiv;
 }
@@ -291,28 +262,27 @@ function selectIsomorphic(divisions, xDelta, yDelta) {
     const keyboardDiv = initKeyboard();
     contentDiv.appendChild(keyboardDiv);
 
-    for (const [code, coords] of Object.entries(CODE_COORDS)) {
-        FREQ_BY_CODE[code] = 220 * Math.pow(2, (coords[0]*xDelta + coords[1]*yDelta) / divisions);
-    }
-
-    const rows = [
-        [0, CODES_TOP_FLATS],
-        [1, CODES_TOP_ROW],
-        [2, CODES_BOTTOM_EXTRA],
-        [3, CODES_BOTTOM_ROW],
-    ];
-    rows.forEach(e => {
-        const [index, row] = e;
-        row.forEach(code => {
-            const [x, y] = CODE_COORDS[code];
+    const z = 1;
+    for (let y = 0; y < 4; ++y) {
+        let xMin = 0;
+        let xMax = 12;
+        if (y == 3) {
+            xMin = -1;
+            xMax = 10;
+        }
+        for (let x = xMin; x < xMax; ++x) {
             keyEl = document.createElement("span");
             keyEl.classList.add("key");
-            text = document.createTextNode(`${x*xDelta + y*yDelta}`);
+            text = document.createTextNode(`${x*xDelta + (3-y)*yDelta}`);
             keyEl.appendChild(text);
-            keyboardDiv.children[index].appendChild(keyEl);
-            KEY_BY_CODE[code] = keyEl;
-        });
-    });
+            keyboardDiv.children[y].appendChild(keyEl);
+            KEY_EL_BY_COORDS.set([x, y, z].toString(), keyEl);
+            MONZO_BY_COORDS.set([x, y, z].toString(), [x, 3-y]);
+        }
+    }
+
+    MAPPING = [Math.log(2) / divisions * xDelta, Math.log(2) / divisions * yDelta];
+
     keyboardDiv.children[3].appendChild(RIGHT_SHIFT_EL);
     addInstrumentControls();
     DIVISIONS = divisions;
@@ -477,6 +447,7 @@ function selectPattern(pattern) {
 function selectStepRatio(pattern, l, s, accidentalSign) {
     [countL, countS] = extractCounts(pattern);
     const divisions = countL*l + countS*s;
+    MAPPING = [Math.log(2)/divisions * l, Math.log(2)/divisions * s];
 
     clearContent();
     const contentDiv = document.getElementById("content");
@@ -497,81 +468,73 @@ function selectStepRatio(pattern, l, s, accidentalSign) {
 
     let keyEl, text, accidental;
 
-    let step = 0;
-    let lastJump = 0;
-    if (pattern[pattern.length - 1] == "L") {
-        lastJump = l;
-    } else {
-        lastJump = s;
-    }
+    let coords;
+    let coordL = 0;
+    let coordS = 0;
+    let lastJump = pattern[pattern.length - 1];
 
-    for (let i = 0; i < CODES_TOP_ROW.length; ++i) {
-        let jump;
-        if (pattern[i % pattern.length] == "L") {
-            jump = l;
-        } else {
-            jump = s;
-        }
+    for (let i = 0; i < 12; ++i) {
+        const jump = pattern[i % pattern.length];
 
-        const topCode = CODES_TOP_ROW[i];
-        FREQ_BY_CODE[topCode] = 440 * Math.pow(2, step / divisions);
+        coords = [i, 1, 1].toString();
+        MONZO_BY_COORDS.set(coords, [coordL + countL, coordS + countS]);
 
         keyEl = document.createElement("span");
         keyEl.classList.add("key");
-        text = document.createTextNode(`${step + divisions}`);
+        text = document.createTextNode(`${coordL*l + coordS*s + divisions}`);
         keyEl.appendChild(text);
         qwertyRow.appendChild(keyEl);
-        KEY_BY_CODE[topCode] = keyEl;
+        KEY_EL_BY_COORDS.set(coords, keyEl);
 
-        const topFlat = CODES_TOP_FLATS[i];
+        coords = [i, 0, 1].toString();
         keyEl = document.createElement("span");
         keyEl.classList.add("key");
-        if (l > s) {
-            if (lastJump == l) {
-                if (accidentalSign > 0) {
-                    accidental = step - lastJump + s;
-                } else {
-                    accidental = step - s;
-                }
-                FREQ_BY_CODE[topFlat] = 440 * Math.pow(2, accidental / divisions);
-                text = document.createTextNode(`${accidental + divisions}`);
-                keyEl.appendChild(text);
+        if (lastJump == "L") {
+            if (accidentalSign > 0) {
+                MONZO_BY_COORDS.set(coords, [coordL-1 + countL, coordS+1 + countS]);
+                text = document.createTextNode(`${(coordL-1)*l + (coordS+1)*s + divisions}`);
+            } else {
+                MONZO_BY_COORDS.set(coords, [coordL + countL, coordS-1 + countS]);
+                text = document.createTextNode(`${coordL*l + (coordS-1)*s + divisions}`);
             }
+            keyEl.appendChild(text);
         }
         digitRow.appendChild(keyEl);
-        KEY_BY_CODE[topFlat] = keyEl;
+        KEY_EL_BY_COORDS.set(coords, keyEl);
 
-        const bottomCode = CODES_BOTTOM_ROW[i];
-        if (bottomCode !== undefined) {
-            FREQ_BY_CODE[bottomCode] = 220 * Math.pow(2, step / divisions);
+        if (i < 11) {
+            coords = [i-1, 3, 1].toString();
+            MONZO_BY_COORDS.set(coords, [coordL, coordS]);
 
             keyEl = document.createElement("span");
             keyEl.classList.add("key");
-            text = document.createTextNode(`${step}`);
+            text = document.createTextNode(`${coordL*l + coordS*s}`);
             keyEl.appendChild(text);
             zxcRow.appendChild(keyEl);
-            KEY_BY_CODE[bottomCode] = keyEl;
-
-            const bottomSharp = CODES_BOTTOM_SHARPS[i];
-            keyEl = document.createElement("span");
-            keyEl.classList.add("key");
-            if (l > s) {
-                if (jump == l) {
-                    if (accidentalSign > 0) {
-                        accidental = step + s;
-                    } else {
-                        accidental = step + jump - s;
-                    }
-                    FREQ_BY_CODE[bottomSharp] = 220 * Math.pow(2, accidental / divisions);
-                    text = document.createTextNode(`${accidental}`);
-                    keyEl.appendChild(text);
-                }
-            }
-            asdfRow.appendChild(keyEl);
-            KEY_BY_CODE[bottomSharp] = keyEl;
+            KEY_EL_BY_COORDS.set(coords, keyEl);
         }
 
-        step += jump;
+        coords = [i, 2, 1].toString();
+        keyEl = document.createElement("span");
+        keyEl.classList.add("key");
+        if (jump == "L") {
+            if (accidentalSign > 0) {
+                MONZO_BY_COORDS.set(coords, [coordL, coordS+1]);
+                text = document.createTextNode(`${coordL*l + (coordS+1)*s}`);
+            } else {
+                MONZO_BY_COORDS.set(coords, [coordL+1, coordS-1]);
+                text = document.createTextNode(`${(coordL+1)*l + (coordS-1)*s}`);
+            }
+            keyEl.appendChild(text);
+        }
+        asdfRow.appendChild(keyEl);
+        KEY_EL_BY_COORDS.set(coords, keyEl);
+
+        if (jump == "L") {
+            coordL++;
+        } else {
+            coordS++;
+        }
         lastJump = jump;
     }
     zxcRow.appendChild(RIGHT_SHIFT_EL);
@@ -759,12 +722,14 @@ function addInstrumentControls() {
     contentDiv.appendChild(document.createTextNode("Hz"));
 }
 
+const EXPIRED = 10000;
+
 function appendVoice(context, globalGain) {
     const instrument = new OscillatorInstrument(context);
     instrument.connect(globalGain);
     instrument.start();
-    const active = false;
-    VOICES.push({instrument, active});
+    const age = EXPIRED;
+    VOICES.push({instrument, age});
 }
 
 function voiceOn(voice, frequency, context) {
@@ -775,7 +740,9 @@ function voiceOn(voice, frequency, context) {
 
     voice.instrument.noteOn(time);
 
-    voice.active = true;
+    VOICES.forEach(v => v.age++);
+
+    voice.age = 0;
 }
 
 function voiceOff(voice, context) {
@@ -783,18 +750,32 @@ function voiceOff(voice, context) {
 
     voice.instrument.noteOff(time);
 
-    voice.active = false;
+    voice.age = EXPIRED;
 }
 
 function keyOff(context) {
-    Object.values(VOICE_BY_CODE).forEach(voice => {
+    for (voice of VOICE_BY_COORDS.values()) {
         voiceOff(voice, context);
-    });
-    Object.values(KEY_BY_CODE).forEach(key => {
+    }
+    for (key of KEY_EL_BY_COORDS.values()) {
         key.classList.remove("active");
+    };
+    VOICE_BY_COORDS.clear();
+}
+
+function getOldestVoice() {
+    let result = VOICES[0];
+    VOICES.forEach(voice => {
+        if (voice.age > result.age) {
+            result = voice
+        }
     });
-    Object.keys(VOICE_BY_CODE).forEach(code => delete VOICE_BY_CODE[code]);
-    Object.keys(STICKY_KEYS).forEach(code => delete STICKY_KEYS[code]);
+    return result;
+}
+
+function monzoToFrequency(monzo) {
+    const nats = monzo[0] * MAPPING[0] + monzo[1] * MAPPING[1];
+    return 220 * Math.exp(nats);
 }
 
 async function main() {
@@ -812,8 +793,8 @@ async function main() {
     const resetButton = document.getElementById("reset");
     resetButton.onclick = e => {
         keyOff(context);
-        Object.keys(FREQ_BY_CODE).forEach(code => delete FREQ_BY_CODE[code]);
-        Object.keys(KEY_BY_CODE).forEach(code => delete KEY_BY_CODE[code]);
+        MONZO_BY_COORDS.clear();
+        KEY_EL_BY_COORDS.clear();
         VOICES.forEach(voice => voice.instrument.reset(context));
         populateMosSelection();
     }
@@ -828,7 +809,29 @@ async function main() {
         appendVoice(context, globalGain);
     }
 
-    let voiceIndex = 0;
+    function keydown(coords) {
+        coords = coords.toString();
+        const monzo = MONZO_BY_COORDS.get(coords);
+        const voice = VOICE_BY_COORDS.get(coords);
+        if (monzo !== undefined && voice === undefined) {
+            const newVoice = getOldestVoice();
+            voiceOn(newVoice, monzoToFrequency(monzo), context);
+            VOICE_BY_COORDS.set(coords, newVoice);
+            KEY_EL_BY_COORDS.get(coords).classList.add("active");
+        }
+    }
+
+    function keyup(coords) {
+        coords = coords.toString();
+        const voice = VOICE_BY_COORDS.get(coords);
+        if (voice !== undefined) {
+            voiceOff(voice, context);
+            VOICE_BY_COORDS.delete(coords);
+            KEY_EL_BY_COORDS.get(coords).classList.remove("active");
+        }
+    }
+
+    const keyboard = new Keyboard(keydown, keyup);
 
     window.onkeydown = e => {
         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) {
@@ -841,6 +844,7 @@ async function main() {
                 BACKQUOTE_EL.classList.add("active");
             }
             keyOff(context);
+            keyboard.deactivate();
         }
 
         if (e.code == "ShiftLeft" && LEFT_SHIFT_EL !== undefined) {
@@ -850,46 +854,8 @@ async function main() {
             RIGHT_SHIFT_EL.classList.add("active");
         }
 
-        if (e.key == "Shift") {
-            Object.keys(VOICE_BY_CODE).forEach(code => {
-                STICKY_KEYS[code] = "pending";
-            });
+        if (keyboard.keydown(e)) {
             return;
-        }
-
-        if (STICKY_KEYS[e.code] == "active") {
-            const voice = VOICE_BY_CODE[e.code];
-            if (voice !== undefined) {
-                voiceOff(voice, context);
-                KEY_BY_CODE[e.code].classList.remove("active");
-            }
-            delete VOICE_BY_CODE[e.code];
-            delete STICKY_KEYS[e.code];
-            return;
-        }
-
-        if (STICKY_KEYS[e.code] == "pending") {
-            return;
-        }
-
-        const freq = FREQ_BY_CODE[e.code];
-        const voice = VOICE_BY_CODE[e.code];
-        if (freq !== undefined && voice === undefined) {
-            for (let i = 0; i < VOICES.length; ++i) {
-                voiceIndex = (voiceIndex + 1) % VOICES.length;
-                // TODO: Replace active flags with age so that old notes can be cut off on sustain clusters.
-                if (!VOICES[voiceIndex].active) {
-                    break;
-                }
-            }
-            voiceOn(VOICES[voiceIndex], freq, context);
-            KEY_BY_CODE[e.code].classList.add("active");
-            VOICE_BY_CODE[e.code] = VOICES[voiceIndex];
-            if (e.shiftKey) {
-                // Pending state required to filter out OS repeats
-                // that don't involve physically lifting the key.
-                STICKY_KEYS[e.code] = "pending";
-            }
         }
     }
 
@@ -905,24 +871,9 @@ async function main() {
             LEFT_SHIFT_EL.classList.remove("active");
             return;
         }
-        if (STICKY_KEYS[e.code] == "pending") {
-            STICKY_KEYS[e.code] = "active";
+        if (keyboard.keyup(e)) {
             return;
         }
-        if (STICKY_KEYS[e.code] == "active") {
-            return;
-        }
-
-        const voice = VOICE_BY_CODE[e.code];
-        if (voice !== undefined) {
-            if (e.shiftKey) {
-                STICKY_KEYS[e.code] = "active";
-                return;
-            }
-            voiceOff(voice, context);
-            KEY_BY_CODE[e.code].classList.remove("active");
-        }
-        delete VOICE_BY_CODE[e.code];
     }
 
     let mouseVoice = null;
@@ -933,6 +884,7 @@ async function main() {
         const classList = e.target.classList;
         if (classList.contains("off")) {
             keyOff(context);
+            keyboard.deactivate();
             return;
         }
         if (classList.contains("left-shift") || classList.contains("right-shift")) {
@@ -942,15 +894,10 @@ async function main() {
             context.resume();
             textNode = e.target.firstChild;
             if (textNode !== null) {
+                // TODO: Use the monzos
                 const step = parseInt(textNode.textContent);
                 const freq = 220 * Math.pow(2, step / DIVISIONS);
-                for (let i = 0; i < VOICES.length; ++i) {
-                    voiceIndex = (voiceIndex + 1) % VOICES.length;
-                    if (!VOICES[voiceIndex].active) {
-                        break;
-                    }
-                }
-                mouseVoice = VOICES[voiceIndex];
+                mouseVoice = getOldestVoice();
                 voiceOn(mouseVoice, freq, context);
                 mouseKey = e.target;
                 // TODO: Track voice state not element
