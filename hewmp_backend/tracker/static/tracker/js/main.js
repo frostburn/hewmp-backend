@@ -108,7 +108,7 @@ function clearContent() {
     }
 }
 
-function populateMosSelection() {
+function populateMosSelection(audioCtx) {
     // --- MOS ---
 
     clearContent();
@@ -206,6 +206,100 @@ function populateMosSelection() {
         selectIsomorphic(parseInt(edoInput.value), parseInt(xInput.value), parseInt(yInput.value));
     };
     contentDiv.appendChild(isoButton);
+
+    // --- Waveform design ---
+
+    contentDiv.appendChild(document.createElement("br"));
+    const waveformTitle = document.createElement("h3");
+    waveformTitle.appendChild(document.createTextNode("Design waveform"));
+    contentDiv.appendChild(waveformTitle);
+    harmonicsLabel = document.createElement("label");
+    harmonicsLabel.appendChild(document.createTextNode("Number of harmonics: "));
+    harmonicsLabel.for = "harmonics";
+    contentDiv.appendChild(harmonicsLabel);
+    const harmonicsInput = document.createElement("input");
+    harmonicsInput.id = "harmonics";
+    harmonicsInput.classList.add("number");
+    harmonicsInput.type = "number";
+    harmonicsInput.min = 1;
+    harmonicsInput.value = 8;
+    harmonicsInput.max = 27;
+    contentDiv.appendChild(harmonicsInput);
+    contentDiv.appendChild(document.createTextNode(" "));
+    const harmonicsButton = document.createElement("button");
+    harmonicsButton.appendChild(document.createTextNode("Design"));
+    harmonicsButton.onclick = e => {
+        if (harmonicsInput.validity.valid) {
+            selectWaveformDesign(audioCtx, parseInt(harmonicsInput.value));
+        }
+    }
+    contentDiv.appendChild(harmonicsButton);
+}
+
+function selectWaveformDesign(audioCtx, numHarmonics) {
+    // TODO: Better controls with room for more harmonics
+    // TODO: Use a Fourier transform to allow drawing waveforms by hand
+    clearContent();
+    contentDiv = document.getElementById("content");
+
+    const nameInput = document.createElement("input");
+    nameInput.placeholder = "custom";
+    nameInput.id = "name";
+    contentDiv.appendChild(nameInput);
+    const nameLabel = document.createElement("label");
+    nameLabel.appendChild(document.createTextNode(" Name"));
+    nameLabel.for = nameInput.id;
+    contentDiv.appendChild(nameLabel);
+
+    contentDiv.appendChild(document.createElement("br"));
+    const dcRange = document.createElement("input");
+    dcRange.type = "range";
+    dcRange.min = 0;
+    dcRange.max = 1;
+    dcRange.value = 0;
+    dcRange.step = "any";
+    dcRange.id = "dc";
+    contentDiv.appendChild(dcRange);
+    const dcLabel = document.createElement("label");
+    dcLabel.for = "dc";
+    dcLabel.appendChild(document.createTextNode(" DC"));
+    contentDiv.appendChild(dcLabel);
+
+    for (let n = 0; n < numHarmonics; ++n) {
+        contentDiv.appendChild(document.createElement("br"));
+        const range = document.createElement("input");
+        range.type = "range";
+        range.min = 0;
+        range.max = 1;
+        range.value = 0 + (n==0);
+        range.step = "any";
+        range.id = `harmonic${n+1}`;
+        contentDiv.appendChild(range);
+        const label = document.createElement("label");
+        label.for = range.id;
+        label.appendChild(document.createTextNode(` ${n+1}`));
+        contentDiv.appendChild(label);
+    }
+
+    contentDiv.appendChild(document.createElement("br"));
+    const addButton = document.createElement("button");
+    addButton.appendChild(document.createTextNode("Add to Collection"));
+    addButton.onclick = e => {
+        const sineComponents = new Float32Array(numHarmonics + 1);
+        const cosineComponents = new Float32Array(numHarmonics + 1);
+        cosineComponents[0] = Number(dcRange.value);
+        for (let n = 0; n < numHarmonics; ++n) {
+            const range = document.getElementById(`harmonic${n+1}`);
+            sineComponents[n+1] = Number(range.value);
+        }
+        let name = nameInput.value;
+        if (!name.length) {
+            name = "custom";
+        }
+        WAVEFORMS[name] = audioCtx.createPeriodicWave(sineComponents, cosineComponents);
+        populateMosSelection(audioCtx);
+    }
+    contentDiv.appendChild(addButton);
 }
 
 function initKeyboard() {
@@ -779,10 +873,12 @@ function monzoToFrequency(monzo) {
 }
 
 async function main() {
-    populateMosSelection();
-
     const context = new AudioContext({latencyHint: "interactive"});
     context.suspend();
+
+    WAVEFORMS = createWaveforms(context);
+
+    populateMosSelection(context);
 
     const panicButton = document.getElementById("panic");
     panicButton.onclick = e => {
@@ -796,10 +892,9 @@ async function main() {
         MONZO_BY_COORDS.clear();
         KEY_EL_BY_COORDS.clear();
         VOICES.forEach(voice => voice.instrument.reset(context));
-        populateMosSelection();
+        populateMosSelection(context);
     }
 
-    WAVEFORMS = createWaveforms(context);
 
     const globalGain = context.createGain();
     globalGain.connect(context.destination);
