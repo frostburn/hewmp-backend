@@ -78,7 +78,7 @@ class Keyboard {
     }
 
     keyup(event) {
-        if (event.shiftKey) {
+        if (event.shiftKey && this.activeKeys.has(event.code)) {
             this.stickyKeys.add(event.code);
         }
         if (this.pendingKeys.has(event.code)) {
