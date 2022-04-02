@@ -1063,15 +1063,26 @@ function onMIDIMessage(event) {
     const cmd = data >> 4;
     const channel = data & 0x0f;
 
+    let isNoteOn = false;
+    let isNoteOff = false;
+
     if (cmd == MIDI_COMMANDS.noteOn) {
-        const index = event.data[1];
+        const velocity = params[1];
+        if (velocity == 0) {
+            isNoteOff = true;
+        } else {
+            isNoteOn = true;
+        }
+    }
+    if (isNoteOn) {
+        const index = params[0];
         const monzo = midiMonzo(index);
         const voice = MASTER_INSTRUMENT.voiceOn(monzoToFrequency(monzo));
         VOICE_BY_MIDI_INDEX.set(index, voice);
     }
 
-    if (cmd == MIDI_COMMANDS.noteOff) {
-        const index = event.data[1];
+    if (cmd == MIDI_COMMANDS.noteOff || isNoteOff) {
+        const index = params[0];
         const voice = VOICE_BY_MIDI_INDEX.get(index);
         if (voice !== undefined) {
             MASTER_INSTRUMENT.voiceOff(voice);
