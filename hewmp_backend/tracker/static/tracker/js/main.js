@@ -90,10 +90,11 @@ let BACKQUOTE_EL;
 let LEFT_SHIFT_EL;
 let RIGHT_SHIFT_EL;
 
+const GLIDE_TIME = 0.02;
+let MASTER_INSTRUMENT;
+
 const DEFAULT_WAVEFORMS = ["sine", "square", "sawtooth", "triangle"];
 let WAVEFORMS;
-
-const VOICES = [];
 
 let DIVISIONS;
 
@@ -663,12 +664,12 @@ function addInstrumentControls() {
     });
     select.value = "triangle";
     select.onchange = e => {
-        VOICES.forEach(voice => {
+        MASTER_INSTRUMENT.voices.forEach(voice => {
             const name = select.value;
             if (DEFAULT_WAVEFORMS.includes(name)) {
-                voice.instrument.oscillator.type = name;
+                voice.oscillator.type = name;
             } else {
-                voice.instrument.oscillator.setPeriodicWave(WAVEFORMS[name]);
+                voice.oscillator.setPeriodicWave(WAVEFORMS[name]);
             }
         });
     };
@@ -687,8 +688,8 @@ function addInstrumentControls() {
     attackInput.min = 0;
     attackInput.step = 1;
     attackInput.oninput = e => {
-        VOICES.forEach(voice => {
-            voice.instrument.attack = attackInput.value / 1000;
+        MASTER_INSTRUMENT.voices.forEach(voice => {
+            voice.attack = attackInput.value / 1000;
         });
     }
     contentDiv.appendChild(document.createTextNode("ms"));
@@ -707,8 +708,8 @@ function addInstrumentControls() {
     decayInput.min = 0;
     decayInput.step = 5;
     decayInput.oninput = e => {
-        VOICES.forEach(voice => {
-            voice.instrument.decay = decayInput.value / 1000;
+        MASTER_INSTRUMENT.voices.forEach(voice => {
+            voice.decay = decayInput.value / 1000;
         });
     }
     contentDiv.appendChild(document.createTextNode("ms"));
@@ -728,8 +729,8 @@ function addInstrumentControls() {
     sustainInput.max = 100;
     sustainInput.step = 1;
     sustainInput.oninput = e => {
-        VOICES.forEach(voice => {
-            voice.instrument.sustain = sustainInput.value / 100;
+        MASTER_INSTRUMENT.voices.forEach(voice => {
+            voice.sustain = sustainInput.value / 100;
         });
     }
     contentDiv.appendChild(document.createTextNode("%"));
@@ -748,8 +749,8 @@ function addInstrumentControls() {
     releaseInput.min = 0;
     releaseInput.step = 5;
     releaseInput.oninput = e => {
-        VOICES.forEach(voice => {
-            voice.instrument.release = releaseInput.value / 1000;
+        MASTER_INSTRUMENT.voices.forEach(voice => {
+            voice.release = releaseInput.value / 1000;
         });
     }
     contentDiv.appendChild(document.createTextNode("ms"));
@@ -768,8 +769,8 @@ function addInstrumentControls() {
     vibratoAttackInput.min = 0;
     vibratoAttackInput.step = 5;
     vibratoAttackInput.oninput = e => {
-        VOICES.forEach(voice => {
-            voice.instrument.vibratoAttack = vibratoAttackInput.value / 1000;
+        MASTER_INSTRUMENT.voices.forEach(voice => {
+            voice.vibratoAttack = vibratoAttackInput.value / 1000;
         });
     }
     contentDiv.appendChild(document.createTextNode("ms"));
@@ -782,17 +783,15 @@ function addInstrumentControls() {
     const vibratoDepthInput = document.createElement("input");
     vibratoDepthInput.id = "vibrato-depth";
     contentDiv.appendChild(vibratoDepthInput);
-    vibratoDepthInput.classList.add("number-ms");
-    vibratoDepthInput.type = "number";
-    vibratoDepthInput.value = 5;
+    vibratoDepthInput.type = "range";
     vibratoDepthInput.min = 0;
-    vibratoDepthInput.step = 1;
+    vibratoDepthInput.max = 50;
+    vibratoDepthInput.value = 5;
+    vibratoDepthInput.step = "any";
     vibratoDepthInput.oninput = e => {
-        VOICES.forEach(voice => {
-            voice.instrument.vibratoDepth = Number(vibratoDepthInput.value);
-        });
+        const time = MASTER_INSTRUMENT.bank.context.currentTime;
+        MASTER_INSTRUMENT.vibratoDepth.setTargetAtTime(Number(vibratoDepthInput.value), time, GLIDE_TIME);
     }
-    contentDiv.appendChild(document.createTextNode("cents"));
 
     contentDiv.appendChild(document.createElement("br"));
     const vibratoFrequencyLabel = document.createElement("label");
@@ -802,69 +801,65 @@ function addInstrumentControls() {
     const vibratoFrequencyInput = document.createElement("input");
     vibratoFrequencyInput.id = "vibrato-frequency";
     contentDiv.appendChild(vibratoFrequencyInput);
-    vibratoFrequencyInput.classList.add("number-percent");
-    vibratoFrequencyInput.type = "number";
+    vibratoFrequencyInput.type = "range";
+    vibratoFrequencyInput.max = 15;
     vibratoFrequencyInput.value = 5;
     vibratoFrequencyInput.min = 0;
-    vibratoFrequencyInput.step = 0.2;
+    vibratoFrequencyInput.step = "any";
     vibratoFrequencyInput.oninput = e => {
-        VOICES.forEach(voice => {
-            // XXX: Hax
-            voice.instrument.vibratoFrequency.setValueAtTime(Number(vibratoFrequencyInput.value), 0);
-        });
+        const time = MASTER_INSTRUMENT.bank.context.currentTime;
+        MASTER_INSTRUMENT.vibratoFrequency.setTargetAtTime(Number(vibratoFrequencyInput.value), time, GLIDE_TIME);
     }
-    contentDiv.appendChild(document.createTextNode("Hz"));
-}
 
-const EXPIRED = 10000;
+    contentDiv.appendChild(document.createElement("br"));
+    const filterCutoffLabel = document.createElement("label");
+    filterCutoffLabel.for = "filter-cutoff";
+    filterCutoffLabel.appendChild(document.createTextNode("Filter cutoff: "));
+    contentDiv.appendChild(filterCutoffLabel);
+    const filterCutoffInput = document.createElement("input");
+    filterCutoffInput.id = "filter-cutoff";
+    contentDiv.appendChild(filterCutoffInput);
+    filterCutoffInput.type = "range";
+    // We could use filter.detune to achieve a similar effect too.
+    filterCutoffInput.max = Math.log(12000);
+    filterCutoffInput.value = Math.log(10000);
+    filterCutoffInput.min = Math.log(220);
+    filterCutoffInput.step = "any";
+    filterCutoffInput.oninput = e => {
+        const time = MASTER_INSTRUMENT.bank.context.currentTime;
+        MASTER_INSTRUMENT.filter.frequency.setTargetAtTime(Math.exp(Number(filterCutoffInput.value)), time, GLIDE_TIME);
+    }
 
-function appendVoice(context, globalGain) {
-    const instrument = new OscillatorInstrument(context);
-    instrument.connect(globalGain);
-    instrument.start();
-    const age = EXPIRED;
-    VOICES.push({instrument, age});
-}
-
-function voiceOn(voice, frequency, context) {
-    const time = context.currentTime;
-
-    voice.instrument.frequency.cancelScheduledValues(time);
-    voice.instrument.frequency.setValueAtTime(frequency, time);
-
-    voice.instrument.noteOn(time);
-
-    VOICES.forEach(v => v.age++);
-
-    voice.age = 0;
-}
-
-function voiceOff(voice, context) {
-    const time = context.currentTime;
-
-    voice.instrument.noteOff(time);
-
-    voice.age = EXPIRED;
+    contentDiv.appendChild(document.createElement("br"));
+    const filterQLabel = document.createElement("label");
+    filterQLabel.for = "filter-Q";
+    filterQLabel.appendChild(document.createTextNode("Filter Q: "));
+    contentDiv.appendChild(filterQLabel);
+    const filterQInput = document.createElement("input");
+    filterQInput.id = "filter-Q";
+    contentDiv.appendChild(filterQInput);
+    filterQInput.type = "range";
+    // We could use filter.detune to achieve a similar effect too.
+    filterQInput.max = 10;
+    filterQInput.value = 0.5;
+    filterQInput.min = 0;
+    filterQInput.step = "any";
+    filterQInput.oninput = e => {
+        const time = MASTER_INSTRUMENT.bank.context.currentTime;
+        const target = Number(filterQInput.value);
+        MASTER_INSTRUMENT.filter.Q.setTargetAtTime(target, time, GLIDE_TIME);
+        MASTER_INSTRUMENT.gain.setTargetAtTime(5.7 / (5 + target), time, GLIDE_TIME);
+    }
 }
 
 function keyOff(context) {
-    for (voice of VOICE_BY_COORDS.values()) {
-        voiceOff(voice, context);
-    }
+
+    MASTER_INSTRUMENT.voices.forEach(voice => MASTER_INSTRUMENT.voiceOff(voice));
+
     for (key of KEY_EL_BY_COORDS.values()) {
         key.classList.remove("active");
     };
     VOICE_BY_COORDS.clear();
-}
-
-function getOldestVoice() {
-    let result = VOICES[0];
-    VOICES.forEach(voice => {
-        if (voice.age > result.age) {
-            result = voice
-        }
-    });
-    return result;
 }
 
 function monzoToFrequency(monzo) {
@@ -880,6 +875,20 @@ async function main() {
 
     populateMosSelection(context);
 
+    const masterGain = context.createGain();
+    masterGain.gain.setValueAtTime(0.249, context.currentTime);
+
+    const bank = new OscillatorBank(context);
+
+    const masterInstrument = new OscillatorInstrument(bank);
+    masterInstrument.connect(masterGain).connect(context.destination);
+
+    MASTER_INSTRUMENT = masterInstrument;
+
+    for (let i = 0; i < 12; ++i) {
+        masterInstrument.appendVoice();
+    }
+
     const panicButton = document.getElementById("panic");
     panicButton.onclick = e => {
         context.suspend();
@@ -891,17 +900,8 @@ async function main() {
         keyOff(context);
         MONZO_BY_COORDS.clear();
         KEY_EL_BY_COORDS.clear();
-        VOICES.forEach(voice => voice.instrument.reset(context));
+        masterInstrument.reset();
         populateMosSelection(context);
-    }
-
-
-    const globalGain = context.createGain();
-    globalGain.connect(context.destination);
-    globalGain.gain.setValueAtTime(0.249, context.currentTime);
-
-    for (let i = 0; i < 12; ++i) {
-        appendVoice(context, globalGain);
     }
 
     function keydown(coords) {
@@ -909,8 +909,7 @@ async function main() {
         const monzo = MONZO_BY_COORDS.get(coords);
         const voice = VOICE_BY_COORDS.get(coords);
         if (monzo !== undefined && voice === undefined) {
-            const newVoice = getOldestVoice();
-            voiceOn(newVoice, monzoToFrequency(monzo), context);
+            const newVoice = masterInstrument.voiceOn(monzoToFrequency(monzo));
             VOICE_BY_COORDS.set(coords, newVoice);
             KEY_EL_BY_COORDS.get(coords).classList.add("active");
         }
@@ -920,7 +919,7 @@ async function main() {
         coords = coords.toString();
         const voice = VOICE_BY_COORDS.get(coords);
         if (voice !== undefined) {
-            voiceOff(voice, context);
+            masterInstrument.voiceOff(voice);
             VOICE_BY_COORDS.delete(coords);
             KEY_EL_BY_COORDS.get(coords).classList.remove("active");
         }
@@ -929,9 +928,13 @@ async function main() {
     const keyboard = new Keyboard(keydown, keyup);
 
     window.onkeydown = e => {
-        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) {
+        if (e.target instanceof HTMLInputElement && e.target.type != "range") {
             return;
         }
+        if (e.target instanceof HTMLSelectElement) {
+            return;
+        }
+
         context.resume();
 
         if (e.code == "Backquote") {
@@ -940,6 +943,7 @@ async function main() {
             }
             keyOff(context);
             keyboard.deactivate();
+            return;
         }
 
         if (e.code == "ShiftLeft" && LEFT_SHIFT_EL !== undefined) {
@@ -957,6 +961,7 @@ async function main() {
     window.onkeyup = e => {
         if (e.code == "Backquote" && BACKQUOTE_EL !== undefined) {
             BACKQUOTE_EL.classList.remove("active");
+            return;
         }
         if (e.code == "ShiftRight" && RIGHT_SHIFT_EL !== undefined) {
             RIGHT_SHIFT_EL.classList.remove("active");
@@ -992,8 +997,7 @@ async function main() {
                 // TODO: Use the monzos
                 const step = parseInt(textNode.textContent);
                 const freq = 220 * Math.pow(2, step / DIVISIONS);
-                mouseVoice = getOldestVoice();
-                voiceOn(mouseVoice, freq, context);
+                mouseVoice = masterInstrument.voiceOn(freq);
                 mouseKey = e.target;
                 // TODO: Track voice state not element
                 mouseKey.classList.add("mouse-active");
@@ -1003,7 +1007,7 @@ async function main() {
 
     window.onmouseup = e => {
         if (mouseVoice !== null) {
-            voiceOff(mouseVoice, context);
+            masterInstrument.voiceOff(mouseVoice);
             mouseVoice = null;
             mouseKey.classList.remove("mouse-active");
         }

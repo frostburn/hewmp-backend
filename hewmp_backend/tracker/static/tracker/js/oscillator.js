@@ -1,3 +1,31 @@
+const EXPIRED = 10000;  // Max number of concurrent note-ons before things get weird.
+
+// Unfortunately common Web Audio API implementations have a bug
+// where disconnected and stopped oscillators fail to garbage collect.
+// This means we have a finite budget on oscillators we can create
+// and need to reuse them.
+// I haven't checked if this applies to other AudioNodes as well so
+// this bank system might need to be extended in the future.
+class OscillatorBank {
+    constructor(context) {
+        this.context = context;
+        this.oscillators = [];
+    }
+
+    borrowOscillator() {
+        if (this.oscillators.length) {
+            return this.oscillators.pop();
+        }
+        return this.context.createOscillator();
+    }
+
+    returnOscillator(oscillator) {
+        oscillator.disconnect();
+        oscillator.stop();
+        this.oscillators.push(oscillator);
+    }
+}
+
 class FMOsc {
     // Controls:
     // frequency, base frequency
@@ -9,10 +37,12 @@ class FMOsc {
     // Please note that if carrierFactor and modulatorFactor are not coprime
     // there will be no fundamental harmonic at base frequency.
 
-    constructor(context) {
+    constructor(bank) {
+        this.bank = bank;
+        const context = bank.context;
         // Main components
-        this.carrier = context.createOscillator();
-        this.modulator = context.createOscillator();
+        this.carrier = bank.borrowOscillator();
+        this.modulator = bank.borrowOscillator();
 
         // Override frequency controls
         this.carrier.frequency.setValueAtTime(0, context.currentTime);
@@ -59,157 +89,32 @@ class FMOsc {
         this._frequency.stop(when);
         this._detune.stop(when);
     }
+
+    dispose() {
+        this.bank.returnOscillator(this.carrier);
+        this.bank.returnOscillator(this.modulator);
+    }
 }
 
-class FMInstrument {
-    constructor(context) {
-        this.oscillator = new FMOsc(context);
+
+class OscillatorVoice {
+    constructor(bank) {
+        this.bank = bank;
+        const context = bank.context;
+        this.oscillator = bank.borrowOscillator();
         this._gain = context.createGain();
         this.gain = this._gain.gain;
         this.gain.setValueAtTime(0, context.currentTime);
         this.oscillator.connect(this._gain);
         this.frequency = this.oscillator.frequency;
-        this.vibratoOsc = context.createOscillator();
-        this.vibratoFrequency = this.vibratoOsc.frequency;
-        this.vibratoGain = context.createGain();
-        this.vibratoAmount = this.vibratoGain.gain;
-        this.vibratoOsc.connect(this.vibratoGain).connect(this.oscillator.detune);
-
-        this.amplitudeEnvelope = new Envelope([0, 1, .9, .8, .7, .6, .5, .4, .2, .0], 0.5, 5, 6, 9, 10);
-        this.indexEnvelope = new Envelope([6, 5, 4, 3, 2, 1, 0.7, 0.4, 0.3, 0.2], 0.15, 9, 10, 9, 10);
-        this.carrierEnvelope = new Envelope([2], 0.5, 0, 1, 0, 1);
-        this.modulatorEnvelope = new Envelope([7], 0.5, 0, 1, 0, 1);
-        this.detuneEnvelope = new Envelope([0], 0.5, 0, 1, 0, 1);
-        this.vibratoFrequencyEnvelope = new Envelope([6], 0.5, 0, 1, 0, 1);
-        this.vibratoAmountEnvelope = new Envelope([0, 5], 0.5, 1, 2, 1, 2);
-
-        this.noteOnTime = null;
+        this.vibrato = context.createGain();
+        this.vibratoAmount = this.vibrato.gain;
+        this.vibrato.connect(this.oscillator.detune);
+        this.reset();
     }
 
-    connect(destination) {
-        return this._gain.connect(destination);
-    }
-
-    start(when) {
-        this.oscillator.start(when);
-        this.vibratoOsc.start(when);
-    }
-
-    stop(when) {
-        this.oscillator.stop(when);
-        this.vibratoOsc.stop(when);
-    }
-
-    // TODO: Velocity sensitivity
-    // TODO: User-controlled envelopes
-    noteOn(when) {
-        this.noteOnTime = when;
-        this.amplitudeEnvelope.noteOn(this.gain, when);
-        this.indexEnvelope.noteOn(this.oscillator.modulationIndex, when);
-        this.carrierEnvelope.noteOn(this.oscillator.carrierFactor, when);
-        this.modulatorEnvelope.noteOn(this.oscillator.modulatorFactor, when);
-        this.detuneEnvelope.noteOn(this.oscillator.detune, when);
-        this.vibratoFrequencyEnvelope.noteOn(this.vibratoFrequency, when);
-        this.vibratoAmountEnvelope.noteOn(this.vibratoAmount, when);
-    }
-
-    noteOff(when) {
-        this.amplitudeEnvelope.noteOff(this.gain, when, this.noteOnTime);
-        this.indexEnvelope.noteOff(this.oscillator.modulationIndex, when, this.noteOnTime);
-        this.carrierEnvelope.noteOff(this.oscillator.carrierFactor, when, this.noteOnTime);
-        this.modulatorEnvelope.noteOff(this.oscillator.modulatorFactor, when, this.noteOnTime);
-        this.detuneEnvelope.noteOff(this.oscillator.detune, when, this.noteOnTime);
-        this.vibratoFrequencyEnvelope.noteOff(this.vibratoFrequency, when, this.noteOnTime);
-        this.vibratoAmountEnvelope.noteOff(this.vibratoAmount, when, this.noteOnTime);
-    }
-}
-
-const DEFAULT_UNROLL_DURATION = 20;
-
-class Envelope {
-    constructor(values, duration, sustainStart, sustainEnd, loopStart, loopEnd, linear=true) {
-        this.values = values;
-        this.duration = duration;
-        this.sustainStart = sustainStart;
-        this.sustainEnd = sustainEnd;
-        this.loopStart = loopStart;
-        this.loopEnd = loopEnd;
-        this.linear = linear;
-    }
-
-    unrollSustain(minDuration=DEFAULT_UNROLL_DURATION) {
-        const dFactor = this.duration / this.values.length;
-        let result = this.values.slice(0, this.sustainEnd);
-        let duration = dFactor * this.sustainEnd;
-        while (duration < minDuration) {
-            result = result.concat(this.values.slice(this.sustainStart, this.sustainEnd));
-            duration += dFactor * (this.sustainEnd - this.sustainStart);
-        }
-        return [result, duration];
-    }
-
-    unrollRelease(noteOnDuration, minDuration=DEFAULT_UNROLL_DURATION) {
-        const dFactor = this.duration / this.values.length;
-        let releaseIndex = Math.ceil(noteOnDuration / dFactor);
-        const offset = dFactor * releaseIndex - noteOnDuration;
-        while (releaseIndex > this.sustainEnd) {
-            releaseIndex -= this.sustainEnd - this.sustainStart;
-        }
-        let result = this.values.slice(releaseIndex, this.loopEnd);
-        let duration = dFactor * (this.loopEnd - releaseIndex);
-        while (duration < minDuration) {
-            result = result.concat(this.values.slice(this.loopStart, this.loopEnd));
-            duration += dFactor * (this.loopEnd - this.loopStart);
-        }
-        return [result, duration, offset];
-    }
-
-    noteOn(audioParam, when) {
-        const [values, duration] = this.unrollSustain();
-        this.applyValues(audioParam, when, values, duration, 0);
-    }
-
-    noteOff(audioParam, when, noteOnTime) {
-        const [values, duration, offset] = this.unrollRelease(when - noteOnTime);
-        this.applyValues(audioParam, when, values, duration, offset);
-    }
-
-    applyValues(audioParam, when, values, duration, offset) {
-        audioParam.cancelScheduledValues(when);
-        audioParam.setValueAtTime(values[0], when);
-        const dt = duration / values.length;
-        let time = offset;
-        values.forEach(value => {
-            if (this.linear) {
-                audioParam.linearRampToValueAtTime(value, when + time);
-            } else {
-                audioParam.setValueAtTime(value, when + time);
-            }
-            time += dt;
-        });
-    }
-}
-
-
-class OscillatorInstrument {
-    constructor(context) {
-        this.oscillator = context.createOscillator();
-        this._gain = context.createGain();
-        this.gain = this._gain.gain;
-        this.gain.setValueAtTime(0, context.currentTime);
-        this.oscillator.connect(this._gain);
-        this.frequency = this.oscillator.frequency;
-        this.vibratoOsc = context.createOscillator();
-        this.vibratoFrequency = this.vibratoOsc.frequency;
-        this.vibratoGain = context.createGain();
-        this.vibratoAmount = this.vibratoGain.gain;
-        this.vibratoOsc.connect(this.vibratoGain).connect(this.oscillator.detune);
-        this.reset(context);
-    }
-
-    reset(context) {
+    reset() {
         this.oscillator.type = "triangle";
-        this.vibratoFrequency.setValueAtTime(5, context.currentTime);
 
         this.attack = 0.01;
         this.decay = 0.1;
@@ -217,7 +122,6 @@ class OscillatorInstrument {
         this.release = 0.15;
 
         this.vibratoAttack = 0.2;
-        this.vibratoDepth = 5;
     }
 
     connect(destination) {
@@ -226,12 +130,10 @@ class OscillatorInstrument {
 
     start(when) {
         this.oscillator.start(when);
-        this.vibratoOsc.start(when);
     }
 
     stop(when) {
         this.oscillator.stop(when);
-        this.vibratoOsc.stop(when);
     }
 
     noteOn(when) {
@@ -242,12 +144,119 @@ class OscillatorInstrument {
 
         this.vibratoAmount.cancelScheduledValues(when);
         this.vibratoAmount.setValueAtTime(0, when);
-        this.vibratoAmount.linearRampToValueAtTime(this.vibratoDepth, when + this.vibratoAttack);
+        this.vibratoAmount.linearRampToValueAtTime(1, when + this.vibratoAttack);
     }
 
     noteOff(when) {
         this.gain.cancelScheduledValues(when);
         this.gain.setValueAtTime(this.gain.value, when);
         this.gain.linearRampToValueAtTime(0, when + this.release);
+    }
+
+    dispose() {
+        this.bank.returnOscillator(this.oscillator);
+    }
+}
+
+class OscillatorInstrument {
+    constructor(bank) {
+        this.bank = bank;
+        const context = bank.context;
+
+        this.gain_ = context.createGain();
+        this.gain = this.gain_.gain;
+
+        this.filter = context.createBiquadFilter();
+        this.filter.type = "lowpass";
+        this.filter.connect(this.gain_);
+
+        // TODO
+        // this tremoloOsc = bank.borrowOscillator();
+        // this.tremoloFrequency = this.tremoloOsc.frequency;
+        // this.tremoloAmount_ = context.createGain();
+        // this.tremoloAmount = this.tremoloAmount_.gain;
+        // this.tremoloFrequency.connect(this.tremoloAmount_);
+
+        this.vibratoOsc = bank.borrowOscillator();
+        this.vibratoOsc.start(context.currentTime);
+        this.vibratoFrequency = this.vibratoOsc.frequency;
+        this.vibratoDepth_ = context.createGain();
+        this.vibratoDepth = this.vibratoDepth_.gain;
+        this.vibratoOsc.connect(this.vibratoDepth_);
+
+        this.voices = [];
+
+        this.reset();
+    }
+
+    reset() {
+        const time = this.bank.context.currentTime;
+
+        this.gain.setValueAtTime(1.0, time);
+
+        this.filter.frequency.setValueAtTime(10000, time);
+        this.filter.Q.setValueAtTime(0.7, time);
+
+        // this.tremoloOsc.setValueAtTime(5, this.bank.context.currentTime);
+        // this.tremoloAmount.setValueAtTime(0.1, this.bank.context.currentTime);
+
+        this.vibratoFrequency.setValueAtTime(5, time);
+        this.vibratoDepth.setValueAtTime(5, time);
+
+        this.voices.forEach(voice => voice.reset());
+    }
+
+    connect(destination) {
+        return this.gain_.connect(destination);
+    }
+
+    appendVoice() {
+        const voice = new OscillatorVoice(this.bank);
+        this.vibratoDepth_.connect(voice.vibrato);
+        voice.connect(this.filter);
+        // this.tremoloAmount_.connect(voice.tremolo);
+        voice.start();
+        voice.age = EXPIRED;
+        this.voices.push(voice);
+    }
+
+    dispose() {
+        this.voices.forEach(voice => voice.dispose());
+        this.bank.returnOscillator(this.vibratoOsc);
+        // this.bank.returnOscillator(this.tremoloOsc);
+    }
+
+    getOldestVoice() {
+        let result = this.voices[0];
+        this.voices.forEach(voice => {
+            if (voice.age > result.age) {
+                result = voice
+            }
+        });
+        return result;
+    }
+
+    voiceOn(frequency) {
+        const time = this.bank.context.currentTime;
+
+        const voice = this.getOldestVoice();
+        voice.frequency.cancelScheduledValues(time);
+        voice.frequency.setValueAtTime(frequency, time);
+
+        voice.noteOn(time);
+
+        this.voices.forEach(v => v.age++);
+
+        voice.age = 0;
+
+        return voice;
+    }
+
+    voiceOff(voice) {
+        const time = this.bank.context.currentTime;
+
+        voice.noteOff(time);
+
+        voice.age = EXPIRED;
     }
 }
