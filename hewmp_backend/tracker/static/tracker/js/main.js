@@ -102,6 +102,48 @@ let MAPPING;
 
 const PLAY_INSTRUCTIONS = "Play something using the keys QWERTY etc. The Shift key toggles sustain.";
 
+let MIDI_INPUT;
+let MIDI_MONZOS;
+const VOICE_BY_MIDI_INDEX = new Map();
+let MIDI_KEY_MODE = "white";
+let MIDI_INFLECTION;
+const MIDI_WHITES_PLUS = [
+    [0, false],
+    [0, true],
+    [1, false],
+    [2, false],
+    [2, true],
+    [3, false],
+    [3, true],
+    [4, false],
+    [5, false],
+    [5, true],
+    [6, false],
+    [6, true],
+];
+const MIDI_WHITES_MINUS = [
+    [0, false],
+    [1, true],
+    [1, false],
+    [2, false],
+    [3, true],
+    [3, false],
+    [4, true],
+    [4, false],
+    [5, false],
+    [6, true],
+    [6, false],
+    [7, true],
+];
+// https://www.midi.org/specifications/item/table-1-summary-of-midi-message
+const MIDI_COMMANDS = {
+    noteOn: 0b1001,
+    noteOff: 0b1000,
+    aftertouch: 0b1010,
+    pitchbend: 0b1110,
+    cc: 0b1011
+};
+
 function clearContent() {
     const contentDiv = document.getElementById("content");
     while (contentDiv.firstChild) {
@@ -235,6 +277,94 @@ function populateMosSelection(audioCtx) {
         }
     }
     contentDiv.appendChild(harmonicsButton);
+
+    // --- MIDI ---
+    contentDiv.appendChild(document.createElement("br"));
+    const midiContainer = document.createElement("div");
+    midiContainer.id = "midi-container";
+    contentDiv.appendChild(midiContainer);
+    if (MIDI_INPUT !== undefined) {
+        populateMidiInfo();
+    } else {
+        midiContainer.appendChild(document.createElement("br"));
+        const midiButton = document.createElement("button");
+        midiButton.appendChild(document.createTextNode("Activate MIDI"));
+        midiButton.onclick = activateMidi;
+        midiContainer.appendChild(midiButton);
+    }
+}
+
+async function activateMidi() {
+    const midiAccess = await navigator.requestMIDIAccess();
+    const midiContainer = document.getElementById("midi-container");
+    while (midiContainer.firstChild) {
+        midiContainer.removeChild(midiContainer.firstChild);
+    }
+    midiContainer.appendChild(document.createElement("br"));
+    const midiInputSelect = document.createElement("select");
+    const emptyOption = document.createElement("option");
+    emptyOption.disabled = true;
+    emptyOption.value = "";
+    emptyOption.appendChild(document.createTextNode("-- Select device --"));
+    midiInputSelect.appendChild(emptyOption);
+    for (const key of midiAccess.inputs.keys()) {
+        const input = midiAccess.inputs.get(key);
+        const option = document.createElement("option");
+        option.value = key;
+        option.appendChild(document.createTextNode(input.name));
+        midiInputSelect.appendChild(option);
+    }
+    midiInputSelect.value = emptyOption.value;
+    midiContainer.appendChild(midiInputSelect);
+    midiInputSelect.onchange = e => {
+        MIDI_INPUT = midiAccess.inputs.get(midiInputSelect.value);
+        MIDI_INPUT.onmidimessage = onMIDIMessage;
+        populateMidiInfo();
+    }
+}
+
+function populateMidiInfo() {
+    const midiContainer = document.getElementById("midi-container");
+    while (midiContainer.firstChild) {
+        midiContainer.removeChild(midiContainer.firstChild);
+    }
+    midiContainer.appendChild(document.createElement("br"));
+    const midiTitle = document.createElement("b");
+    midiTitle.appendChild(document.createTextNode("MIDI device active"));
+    midiContainer.appendChild(midiTitle);
+    midiContainer.appendChild(document.createElement("br"));
+    const nameSpan = document.createElement("span");
+    nameSpan.appendChild(document.createTextNode(MIDI_INPUT.name));
+    midiContainer.appendChild(nameSpan);
+
+    midiContainer.appendChild(document.createElement("br"));
+    const chromaticRadio = document.createElement("input");
+    chromaticRadio.id = "chromatic";
+    chromaticRadio.type = "radio";
+    chromaticRadio.name = "midi-key-mode";
+    chromaticRadio.value = "chromatic";
+    chromaticRadio.checked = (MIDI_KEY_MODE == "chromatic");
+    midiContainer.appendChild(chromaticRadio);
+    const chromaticLabel = document.createElement("label");
+    chromaticLabel.for = "chromatic";
+    chromaticLabel.appendChild(document.createTextNode("All"));
+    midiContainer.appendChild(chromaticLabel);
+
+    const whiteRadio = document.createElement("input");
+    whiteRadio.id = "white";
+    whiteRadio.type = "radio";
+    whiteRadio.name = "midi-key-mode";
+    whiteRadio.value = "white";
+    whiteRadio.checked = (MIDI_KEY_MODE == "white");
+    midiContainer.appendChild(whiteRadio);
+    const whiteLabel = document.createElement("label");
+    whiteLabel.for = "white";
+    whiteLabel.appendChild(document.createTextNode("White"));
+    midiContainer.appendChild(whiteLabel);
+
+    chromaticRadio.onchange = whiteRadio.onchange = e => {
+        MIDI_KEY_MODE = Array.from(document.getElementsByName("midi-key-mode")).find(r => r.checked).value;
+    }
 }
 
 function selectWaveformDesign(audioCtx, numHarmonics) {
@@ -635,6 +765,20 @@ function selectStepRatio(pattern, l, s, accidentalSign) {
     zxcRow.appendChild(RIGHT_SHIFT_EL);
     addInstrumentControls();
     DIVISIONS = divisions;
+
+    if (MIDI_INPUT !== undefined) {
+        MIDI_MONZOS = [];
+        const MONZO = [0, 0];
+        for (let i = 0; i < pattern.length; ++i) {
+            if (pattern[i] == "L") {
+                MONZO[0] += 1;
+            } else {
+                MONZO[1] += 1;
+            }
+            MIDI_MONZOS.push([...MONZO]);
+        }
+        MIDI_INFLECTION = [0, accidentalSign];
+    }
 }
 
 function addInstrumentControls() {
@@ -867,6 +1011,77 @@ function monzoToFrequency(monzo) {
     return 220 * Math.exp(nats);
 }
 
+const MIDI_A3 = 57;
+
+function midiMonzo(index) {
+    let scaleIndex;
+    let inflected = false;
+
+    if (MIDI_KEY_MODE == "chromatic") {
+        scaleIndex = index - MIDI_A3;
+    } else if (MIDI_KEY_MODE == "white") {
+        const linIndex = index - MIDI_A3;
+        let whites;
+        if (MIDI_INFLECTION[1] > 0) {
+            whites = MIDI_WHITES_PLUS;
+        } else {
+            whites = MIDI_WHITES_MINUS;
+        }
+        const linOctave = Math.floor(linIndex / 12);
+        scaleIndex = whites[linIndex - linOctave * 12][0];
+        inflected = whites[linIndex - linOctave * 12][1];
+        scaleIndex += linOctave * 7;
+    }
+
+    scaleIndex -= 1;
+    let octave = 0;
+    while (scaleIndex < 0) {
+        scaleIndex += MIDI_MONZOS.length;
+        octave--;
+    }
+    while (scaleIndex >= MIDI_MONZOS.length) {
+        scaleIndex -= MIDI_MONZOS.length;
+        octave++;
+    }
+    const result = [...MIDI_MONZOS[scaleIndex]];
+    for (let i = 0; i < result.length; ++i) {
+        result[i] += octave * MIDI_MONZOS[MIDI_MONZOS.length - 1][i];
+        if (inflected) {
+            result[i] += MIDI_INFLECTION[i];
+        }
+    }
+    return result;
+}
+
+function onMIDIMessage(event) {
+    if (MIDI_MONZOS === undefined) {
+        return;
+    }
+    MASTER_INSTRUMENT.bank.context.resume();
+
+    const [data, ...params] = event.data;
+    const cmd = data >> 4;
+    const channel = data & 0x0f;
+
+    if (cmd == MIDI_COMMANDS.noteOn) {
+        const index = event.data[1];
+        const monzo = midiMonzo(index);
+        const voice = MASTER_INSTRUMENT.voiceOn(monzoToFrequency(monzo));
+        VOICE_BY_MIDI_INDEX.set(index, voice);
+    }
+
+    if (cmd == MIDI_COMMANDS.noteOff) {
+        const index = event.data[1];
+        const voice = VOICE_BY_MIDI_INDEX.get(index);
+        if (voice !== undefined) {
+            MASTER_INSTRUMENT.voiceOff(voice);
+            VOICE_BY_MIDI_INDEX.delete(index);
+        }
+    }
+
+    // TODO: Modwheel, Pitch-bend
+}
+
 async function main() {
     const context = new AudioContext({latencyHint: "interactive"});
     context.suspend();
@@ -900,6 +1115,7 @@ async function main() {
         keyOff(context);
         MONZO_BY_COORDS.clear();
         KEY_EL_BY_COORDS.clear();
+        MIDI_MONZOS = undefined;
         masterInstrument.reset();
         populateMosSelection(context);
     }
