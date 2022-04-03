@@ -144,6 +144,11 @@ const MIDI_COMMANDS = {
     cc: 0b1011
 };
 
+// https://www.midi.org/specifications-old/item/table-3-control-change-messages-data-bytes-2
+const MIDI_CC = {
+    modwheel: 0x01,
+}
+
 function clearContent() {
     const contentDiv = document.getElementById("content");
     while (contentDiv.firstChild) {
@@ -1090,7 +1095,20 @@ function onMIDIMessage(event) {
         }
     }
 
-    // TODO: Modwheel, Pitch-bend
+    if (cmd == MIDI_COMMANDS.cc) {
+        const controlFunction = params[0];
+        const value = params[1];
+        // TODO: Learn cc, assign cc
+        const time = MASTER_INSTRUMENT.bank.context.currentTime;
+        if (controlFunction == MIDI_CC.modwheel) {
+            const vibratoDepthInput = document.getElementById("vibrato-depth");
+            const target = vibratoDepthInput.min + value / 127 * (vibratoDepthInput.max - vibratoDepthInput.min);
+            vibratoDepthInput.value = target;
+            MASTER_INSTRUMENT.vibratoDepth.setTargetAtTime(target, time, GLIDE_TIME);
+        }
+    }
+
+    // TODO: Pitch-bend
 }
 
 async function main() {
