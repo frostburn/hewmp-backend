@@ -92,6 +92,7 @@ let RIGHT_SHIFT_EL;
 
 const GLIDE_TIME = 0.02;
 let MASTER_INSTRUMENT;
+let PITCH_BEND_DEPTH = 200;
 
 const DEFAULT_WAVEFORMS = ["sine", "square", "sawtooth", "triangle"];
 let WAVEFORMS;
@@ -516,6 +517,7 @@ function selectIsomorphic(divisions, xDelta, yDelta) {
     keyboardDiv.children[3].appendChild(RIGHT_SHIFT_EL);
     addInstrumentControls();
     DIVISIONS = divisions;
+    PITCH_BEND_DEPTH = 1200 * xDelta / divisions;
 }
 
 function selectMos(countL, countS) {
@@ -770,6 +772,7 @@ function selectStepRatio(pattern, l, s, accidentalSign) {
     zxcRow.appendChild(RIGHT_SHIFT_EL);
     addInstrumentControls();
     DIVISIONS = divisions;
+    PITCH_BEND_DEPTH = 1200*l/divisions;
 
     if (MIDI_INPUT !== undefined) {
         MIDI_MONZOS = [];
@@ -790,6 +793,28 @@ function addInstrumentControls() {
     const contentDiv = document.getElementById("content");
     contentDiv.appendChild(document.createElement("br"));
 
+    const pitchBendLabel = document.createElement("label");
+    pitchBendLabel.for = "pitch-bend";
+    pitchBendLabel.appendChild(document.createTextNode("Pitch bend: "));
+    contentDiv.appendChild(pitchBendLabel);
+    const pitchBendInput = document.createElement("input");
+    pitchBendInput.type = "range";
+    pitchBendInput.id = "pitch-bend";
+    pitchBendInput.min = -1;
+    pitchBendInput.max = 1;
+    pitchBendInput.value = 0;
+    pitchBendInput.step = "any";
+    pitchBendInput.oninput = e => {
+        const time = MASTER_INSTRUMENT.bank.context.currentTime;
+        MASTER_INSTRUMENT.pitchBend.setTargetAtTime(Number(pitchBendInput.value) * PITCH_BEND_DEPTH, time, GLIDE_TIME);
+    }
+    pitchBendInput.onblur = e => {
+        pitchBendInput.value = 0;
+        pitchBendInput.oninput(e);
+    }
+    contentDiv.appendChild(pitchBendInput);
+
+    contentDiv.appendChild(document.createElement("br"));
     const waveformLabel = document.createElement("label");
     waveformLabel.for = "waveform";
     waveformLabel.appendChild(document.createTextNode("Waveform: "));
@@ -1059,14 +1084,47 @@ function midiMonzo(index) {
 }
 
 function onMIDIMessage(event) {
-    if (MIDI_MONZOS === undefined) {
-        return;
-    }
     MASTER_INSTRUMENT.bank.context.resume();
 
     const [data, ...params] = event.data;
     const cmd = data >> 4;
     const channel = data & 0x0f;
+
+    if (cmd == MIDI_COMMANDS.cc) {
+        const controlFunction = params[0];
+        const value = params[1];
+        // TODO: Learn cc, assign cc
+        if (controlFunction == MIDI_CC.modwheel) {
+            const vibratoDepthInput = document.getElementById("vibrato-depth");
+            if (vibratoDepthInput === undefined) {
+                return;
+            }
+            const target = vibratoDepthInput.min + value / 127 * (vibratoDepthInput.max - vibratoDepthInput.min);
+            vibratoDepthInput.value = target;
+            vibratoDepthInput.oninput();
+        }
+    }
+
+    if (cmd == MIDI_COMMANDS.pitchbend) {
+        const value = (params[1] << 7) | params[0];
+        let amount = (value - 0x2000);
+        if (amount < 0) {
+            amount /= 0x2000;
+        }
+        if (amount > 0) {
+            amount /= 0x1FFF;
+        }
+        const pitchBendInput = document.getElementById("pitch-bend");
+        if (pitchBendInput === undefined) {
+            return;
+        }
+        pitchBendInput.value = amount;
+        pitchBendInput.oninput();
+    }
+
+    if (MIDI_MONZOS === undefined) {
+        return;
+    }
 
     let isNoteOn = false;
     let isNoteOff = false;
@@ -1094,21 +1152,6 @@ function onMIDIMessage(event) {
             VOICE_BY_MIDI_INDEX.delete(index);
         }
     }
-
-    if (cmd == MIDI_COMMANDS.cc) {
-        const controlFunction = params[0];
-        const value = params[1];
-        // TODO: Learn cc, assign cc
-        const time = MASTER_INSTRUMENT.bank.context.currentTime;
-        if (controlFunction == MIDI_CC.modwheel) {
-            const vibratoDepthInput = document.getElementById("vibrato-depth");
-            const target = vibratoDepthInput.min + value / 127 * (vibratoDepthInput.max - vibratoDepthInput.min);
-            vibratoDepthInput.value = target;
-            MASTER_INSTRUMENT.vibratoDepth.setTargetAtTime(target, time, GLIDE_TIME);
-        }
-    }
-
-    // TODO: Pitch-bend
 }
 
 async function main() {

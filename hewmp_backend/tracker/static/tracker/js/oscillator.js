@@ -107,6 +107,7 @@ class OscillatorVoice {
         this.gain.setValueAtTime(0, context.currentTime);
         this.oscillator.connect(this._gain);
         this.frequency = this.oscillator.frequency;
+        this.detune = this.oscillator.detune;
         this.vibrato = context.createGain();
         this.vibratoAmount = this.vibrato.gain;
         this.vibrato.connect(this.oscillator.detune);
@@ -184,6 +185,10 @@ class OscillatorInstrument {
         this.vibratoDepth = this.vibratoDepth_.gain;
         this.vibratoOsc.connect(this.vibratoDepth_);
 
+        this.pitchBend_ = context.createConstantSource();
+        this.pitchBend_.start(context.currentTime);
+        this.pitchBend = this.pitchBend_.offset;
+
         this.voices = [];
 
         this.reset();
@@ -203,6 +208,8 @@ class OscillatorInstrument {
         this.vibratoFrequency.setValueAtTime(5, time);
         this.vibratoDepth.setValueAtTime(5, time);
 
+        this.pitchBend.setValueAtTime(0, time);
+
         this.voices.forEach(voice => voice.reset());
     }
 
@@ -213,6 +220,7 @@ class OscillatorInstrument {
     appendVoice() {
         const voice = new OscillatorVoice(this.bank);
         this.vibratoDepth_.connect(voice.vibrato);
+        this.pitchBend_.connect(voice.detune);
         voice.connect(this.filter);
         // this.tremoloAmount_.connect(voice.tremolo);
         voice.start();
