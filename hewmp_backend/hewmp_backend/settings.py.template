@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     'text2music.apps.Text2MusicConfig',
     'audio_eval.apps.AudioEvalConfig',
     'tracker.apps.TrackerConfig',
+    'tracker_dev.apps.TrackerDevConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
