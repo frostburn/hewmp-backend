@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'audio_eval.apps.AudioEvalConfig',
     'mos_keyboard.apps.MosKeyboardConfig',
     'tracker_dev.apps.TrackerDevConfig',
+    'tracker.apps.TrackerConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

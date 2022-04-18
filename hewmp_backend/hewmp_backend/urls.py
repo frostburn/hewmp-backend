@@ -22,6 +22,7 @@ urlpatterns = [
     path('text2music/', include('text2music.urls')),
     path('audio-eval/', include('audio_eval.urls')),
     path('mos-keyboard/', include('mos_keyboard.urls')),
+    path('tracker/', include('tracker.urls')),
     path('tracker-dev/', include('tracker_dev.urls')),
     path('admin/', admin.site.urls),
 ]

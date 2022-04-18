@@ -5,6 +5,7 @@ def index(request):
     <html>
     <head><title>Lumi Pakkanen | Music, Theory & Free Software</title></head>
     <body>
+        <a href="/tracker/">LumiTracker</a><br>
         <a href="/text2music/">Text2Music</a><br>
         <a href="/mos-keyboard/">MOS Keyboard</a><br><br>
         Follow my socials:<br>
