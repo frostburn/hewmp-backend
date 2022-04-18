@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class TrackerConfig(AppConfig):
+class MosKeyboardConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'tracker'
+    name = 'mos_keyboard'
