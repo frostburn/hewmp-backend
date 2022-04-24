@@ -1,5 +1,149 @@
-import JKISS31 from "../lib/jkiss.js";
-import { getTableValue } from "../lib/table.js";
+// import JKISS31 from "../lib/jkiss.js";
+// import { getTableValue } from "../lib/table.js";
+
+function _getTableValue(n, table) {
+  const loopStart = table.loopStart;
+  const data = table.data;
+  if (n < loopStart) {
+    return data[n];
+  }
+  n -= loopStart;
+  n %= data.length - loopStart;
+  return data[loopStart + n];
+}
+
+export function getTableValue(x, table) {
+  let n = Math.floor(x);
+  if (table.linear) {
+    const mu = x - n;
+    const x0 = _getTableValue(n, table);
+    const x1 = _getTableValue(n + 1, table);
+    return x0 + mu * (x1 - x0);
+  }
+  return _getTableValue(n, table);
+}
+
+export function parseTable(str) {
+  const tokens = str.replace("|", " | ").split(" ");
+  let lastToken = tokens.pop();
+  if (!lastToken.startsWith("/")) {
+    tokens.push(lastToken);
+    lastToken = "/100";
+  }
+
+  const linear = lastToken.endsWith("l");
+  if (linear) {
+    lastToken = lastToken.slice(0, -1);
+  }
+  const scale = parseInt(lastToken.slice(1));
+
+  const data = [];
+
+  let loopStart = Infinity;
+  let index = 0;
+
+  tokens.forEach(token => {
+    if (!token.length) {
+      return;
+    }
+    if (token === "|") {
+      loopStart = index;
+      return;
+    }
+    data.push(parseInt(token) / scale);
+    index++;
+  });
+
+  loopStart = Math.min(data.length - 1, loopStart);
+
+  return { linear, loopStart, data };
+}
+
+// Public domain code for 31-bit KISS generator.
+// Depends on JS bitwise operators producing signed 32 bit integers.
+
+const INT32_MASK_FULL = 4294967295;
+const INT32_MASK_POSITIVE = 2147483647;
+const INVERSE_NORM = 1 / INT32_MASK_POSITIVE;
+const INVERSE_NORMAL = 0.5 * INVERSE_NORM;
+
+export default class JKISS31 {
+  constructor(seed) {
+    this.seed(seed);
+  }
+
+  reset() {
+    this.x = 123456789;
+    this.y = 234567891;
+    this.z = 345678912;
+    this.w = 456789123;
+    this.c = 0;
+  }
+
+  static get MAX_VALUE() {
+    return INT32_MASK_POSITIVE;
+  }
+
+  static unserialize(packet) {
+    const params = JSON.parse(packet);
+    const j = new this();
+
+    j.x = params.x;
+    j.y = params.y;
+    j.z = params.z;
+    j.w = params.w;
+    j.c = params.c;
+
+    return j;
+  }
+
+  serialize() {
+    return JSON.stringify(this);
+  }
+
+  scramble() {
+    this.x = (Math.random() * INT32_MASK_FULL) & INT32_MASK_FULL;
+    this.y = (Math.random() * INT32_MASK_FULL) & INT32_MASK_FULL;
+    this.z = (Math.random() * INT32_MASK_FULL) & INT32_MASK_FULL;
+    this.w = (Math.random() * INT32_MASK_FULL) & INT32_MASK_FULL;
+    this.c = (Math.random() < 0.5) & 1;
+  }
+
+  seed(s) {
+    this.reset();
+    if (s === undefined) {
+      return;
+    }
+    s = (s * 1287649287 + 777777) & INT32_MASK_FULL;
+    this.x ^= s;
+    s = (s*s) & INT32_MASK_FULL;
+    this.y ^= s;
+    s = (s*s) & INT32_MASK_FULL;
+    this.z ^= s;
+  }
+
+  step() {
+    this.y ^= (this.y << 5);
+    this.y ^= (this.y >> 7);
+    this.y ^= (this.y << 22);
+    const t = (this.z + this.w + this.c) & INT32_MASK_FULL;
+    this.z = this.w;
+    this.c = (t < 0) & 1;
+    this.w = t & 2147483647;
+    this.x = (this.x + 1411392427) & INT32_MASK_FULL;
+
+    return (this.x + this.y + this.w) & INT32_MASK_POSITIVE;
+  }
+
+  step01() {
+    return this.step() * INVERSE_NORM;
+  }
+
+  /* Not a true normal distribution, but somewhat close. */
+  normal() {
+    return (this.step() - this.step() + this.step() - this.step() + this.step() - this.step()) * INVERSE_NORMAL;
+  }
+}
 
 const EPSILON = 1e-6;
 
