@@ -8,8 +8,8 @@ def index(request):
     <link rel="icon" href="/static/tracker-dev/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lumi Tracker</title>
-    <script type="module" crossorigin src="/static/tracker-dev/assets/index.js"></script>
-    <link rel="stylesheet" href="/static/tracker-dev/assets/index.css">
+    <script type="module" crossorigin src="/static/tracker-dev/assets/index.f5bcca74.js"></script>
+    <link rel="stylesheet" href="/static/tracker-dev/assets/index.aa2e5698.css">
   </head>
   <body>
     <div id="app"></div>
