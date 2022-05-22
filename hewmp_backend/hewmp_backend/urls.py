@@ -24,5 +24,6 @@ urlpatterns = [
     path('mos-keyboard/', include('mos_keyboard.urls')),
     path('tracker/', include('tracker.urls')),
     path('tracker-dev/', include('tracker_dev.urls')),
+    path('temperament-game/', include('temperament_game.urls')),
     path('admin/', admin.site.urls),
 ]

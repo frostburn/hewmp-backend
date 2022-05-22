@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'mos_keyboard.apps.MosKeyboardConfig',
     'tracker_dev.apps.TrackerDevConfig',
     'tracker.apps.TrackerConfig',
+    'temperament_game.apps.TemperamentGameConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
