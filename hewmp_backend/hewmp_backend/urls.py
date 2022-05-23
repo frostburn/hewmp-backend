@@ -25,5 +25,6 @@ urlpatterns = [
     path('tracker/', include('tracker.urls')),
     path('tracker-dev/', include('tracker_dev.urls')),
     path('temperament-game/', include('temperament_game.urls')),
+    path('blj/', include('blj.urls')),
     path('admin/', admin.site.urls),
 ]

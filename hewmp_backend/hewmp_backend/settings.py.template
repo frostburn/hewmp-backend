@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'tracker_dev.apps.TrackerDevConfig',
     'tracker.apps.TrackerConfig',
     'temperament_game.apps.TemperamentGameConfig',
+    'blj.apps.BLJConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
