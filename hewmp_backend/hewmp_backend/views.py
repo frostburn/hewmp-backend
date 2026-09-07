@@ -6,8 +6,8 @@ def index(request):
     <head><title>Lumi Pakkanen | Music, Theory & Free Software</title></head>
     <body>
         <h2>Projects</h2>
-        <a href="https://scaleworkshop.plainsound.org/">Scale Workshop 3</a>
-        <a href="https://xenpaper.lumipakkanen.com/">Xenpaper 2</a>
+        <a href="https://scaleworkshop.plainsound.org/">Scale Workshop 3</a><br>
+        <a href="https://xenpaper.lumipakkanen.com/">Xenpaper 2</a><br>
         <a href="https://xenpaper3.lumipakkanen.com/">Xenpaper 3</a>
         <h2>Arhives</h2>
         <a href="https://jarzombek.lumipakkanen.com/">Ralph Jarzombek - Microtonal music archive</a>
